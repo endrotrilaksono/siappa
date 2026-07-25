@@ -2,6 +2,54 @@ import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { importContents, getLookups } from '../lib/api'
 
+// Kolom template — HARUS sama dengan yang diparse groupRows di bawah.
+const TEMPLATE_HEADERS = ['content_key','platform','title','content_type','format','goal','date','time','caption','hashtags','slide_text','visual_type','visual_note','ai_prompt']
+
+const TEMPLATE_EXAMPLE = [
+  ['IG-CONTOH','instagram','Contoh: Beku vs Kanginan','edukasi','carousel','awareness','2026-08-04','06:00',
+   'Caption contoh — isi di baris pertama saja.','#frozenfood #ibusiapa',
+   'mana yang lebih segar — ikan beku atau ikan kanginan?','foto_stok','Foto lapak ikan, highlight biru pada beku & kanginan',''],
+  ['IG-CONTOH','','','','','','','','','',
+   'Ikan di suhu ruang lagi rusak pelan-pelan.','desain_teks','Latar krem, highlight biru pada rusak',''],
+  ['IG-CONTOH','','','','','','','','','',
+   'Dibekukan -18C, kualitas terkunci di hari pertama.','ai','Ilustrasi termometer + es',
+   'Minimalist flat vector, snowflake and thermometer minus 18 celsius, cream background, deep blue lines, no text, 4:5'],
+]
+
+function downloadTemplate() {
+  const wb = XLSX.utils.book_new()
+  // Sheet Konten: header + contoh + beberapa baris kosong
+  const aoa = [TEMPLATE_HEADERS, ...TEMPLATE_EXAMPLE]
+  for (let i = 0; i < 15; i++) aoa.push(new Array(TEMPLATE_HEADERS.length).fill(''))
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  ws['!cols'] = [13,11,22,13,10,12,12,8,30,20,34,13,28,34].map(w => ({ wch: w }))
+  XLSX.utils.book_append_sheet(wb, ws, 'Konten')
+
+  // Sheet Petunjuk
+  const guide = [
+    ['CARA PAKAI'],
+    ['1. Satu BARIS = satu SLIDE (carousel/thread) atau satu post (single).'],
+    ['2. Slide dalam satu konten diberi content_key yang SAMA.'],
+    ['3. Kolom konten (platform, title, dst) cukup diisi di BARIS PERTAMA tiap content_key.'],
+    ['4. Kolom slide (slide_text, visual_type, dst) diisi di SETIAP baris.'],
+    [''],
+    ['NILAI VALID'],
+    ['platform    : threads, instagram, tiktok'],
+    ['format      : single, carousel, thread'],
+    ['content_type: edukasi, engagement, soft-sell, fakta, quotes, menu'],
+    ['goal        : awareness, engagement, leads, conversion'],
+    ['visual_type : desain_teks, foto_asli, foto_stok, ai'],
+    [''],
+    ['Hapus baris contoh (IG-CONTOH) sebelum import bila tidak ingin ikut masuk.'],
+    ['Foto produk pakai foto_asli, JANGAN ai. AI hanya untuk ilustrasi non-produk.'],
+  ]
+  const ws2 = XLSX.utils.aoa_to_sheet(guide)
+  ws2['!cols'] = [{ wch: 90 }]
+  XLSX.utils.book_append_sheet(wb, ws2, 'Petunjuk')
+
+  XLSX.writeFile(wb, 'template-konten-siappa.xlsx')
+}
+
 // Format Excel yang diharapkan (satu baris = satu slide):
 // content_key | platform | title | content_type | format | goal | date | time | caption | hashtags | slide_text | visual_type | visual_note | ai_prompt
 // Kolom konten (title, platform, dst) cukup diisi di baris pertama tiap content_key.
@@ -124,11 +172,16 @@ export default function ExcelImport({ brandId, onClose, onImported }) {
         </div>
         <div className="modal-body">
           <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-            Gunakan template Excel yang disediakan. Satu baris = satu slide.
+            Gunakan template Excel. Satu baris = satu slide.
             Kolom konten (title, platform, dst) diisi di baris pertama tiap konten.
             Platform harus: threads, instagram, atau tiktok.
           </p>
-          <label className="filebtn-lg">
+
+          <button className="btn-outline-full" onClick={downloadTemplate}>
+            ⬇ Download template Excel
+          </button>
+
+          <label className="filebtn-lg" style={{ marginTop: 10 }}>
             📄 Pilih file Excel (.xlsx)
             <input type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: 'none' }} />
           </label>

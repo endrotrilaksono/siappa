@@ -15,7 +15,7 @@ create table brands (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   name text not null,
-  color text default '#171cdb',
+  color text default '#0f1499',
   created_at timestamptz default now()
 );
 
@@ -107,7 +107,7 @@ create policy "allow all performance" on performance for all using (true) with c
 
 -- Brand (khusus Ibu Siapa; tabel dipertahankan untuk pengembangan ekosistem Siappa)
 insert into brands (slug, name, color) values
-  ('ibu_siapa', 'Ibu Siapa', '#171cdb');
+  ('ibu_siapa', 'Ibu Siapa', '#0f1499');
 
 -- Platform
 insert into platforms (slug, name, char_limit, unit) values
@@ -155,8 +155,8 @@ begin
   insert into content_parts (content_id, part_order, text, visual_type, visual_note, ai_prompt) values
     (c_id, 1, 'mana yang lebih segar — ikan beku, atau ikan yang kanginan dari subuh?', 'foto_stok', 'Foto pasar/lapak ikan sebagai latar, teks putih overlay, highlight biru pada kata beku & kanginan', null),
     (c_id, 2, 'Ikan di suhu ruang nggak nunggu pembeli. Dia lagi rusak, pelan-pelan.', 'desain_teks', 'Latar krem polos, teks besar, highlight biru pada kata rusak', null),
-    (c_id, 3, 'Khusus kembung, tongkol, tuna: muncul histamin. Digoreng pun tidak hilang.', 'ai', 'Ikon peringatan sederhana di atas latar krem', 'Minimalist flat vector warning icon, fish silhouette, cream background #fffceb, deep blue #171cdb lines, no text, clean editorial, 4:5 ratio'),
-    (c_id, 4, 'Dibekukan -18C kebalikannya. Kualitas ikan terkunci di hari pertama.', 'ai', 'Ilustrasi termometer + kristal es', 'Minimalist flat vector illustration, snowflake and thermometer showing minus 18 celsius, simple line art, cream background #fffceb, deep blue #171cdb line color, no text, 4:5 ratio'),
+    (c_id, 3, 'Khusus kembung, tongkol, tuna: muncul histamin. Digoreng pun tidak hilang.', 'ai', 'Ikon peringatan sederhana di atas latar krem', 'Minimalist flat vector warning icon, fish silhouette, cream background #fffceb, deep blue #0f1499 lines, no text, clean editorial, 4:5 ratio'),
+    (c_id, 4, 'Dibekukan -18C kebalikannya. Kualitas ikan terkunci di hari pertama.', 'ai', 'Ilustrasi termometer + kristal es', 'Minimalist flat vector illustration, snowflake and thermometer showing minus 18 celsius, simple line art, cream background #fffceb, deep blue #0f1499 line color, no text, 4:5 ratio'),
     (c_id, 5, 'Dibekukan sejak awal. Nggak pernah mencair di jalan. Ibu Siapa — link di bio.', 'foto_asli', 'FOTO ASLI kemasan produk Ibu Siapa. Wajib asli, jangan AI.', null);
 
   -- IG: kembung dimasak apa aja

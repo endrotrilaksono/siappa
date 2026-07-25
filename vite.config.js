@@ -12,7 +12,7 @@ export default defineConfig({
         name: 'Siappa',
         short_name: 'Siappa',
         description: 'Super app Ibu Siapa — manajemen konten media sosial',
-        theme_color: '#171cdb',
+        theme_color: '#0f1499',
         background_color: '#fffceb',
         display: 'standalone',
         icons: [
