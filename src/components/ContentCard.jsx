@@ -13,7 +13,7 @@ function copy(text) {
   if (navigator.clipboard) navigator.clipboard.writeText(text)
 }
 
-export default function ContentCard({ content, onChange }) {
+export default function ContentCard({ content, onChange, onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState(content.status)
   const [skipReason, setSkipReason] = useState(content.skip_reason || '')
@@ -84,9 +84,14 @@ export default function ContentCard({ content, onChange }) {
         <span className={`chip goal-${content.goal}`}>{content.goal}</span>
       </div>
 
-      <button className="foldbtn" onClick={() => setOpen(o => !o)}>
-        {open ? '▾ Tutup detail' : '▸ Lihat naskah & kontrol'}
-      </button>
+      <div className="card-actions">
+        <button className="foldbtn" onClick={() => setOpen(o => !o)}>
+          {open ? '▾ Tutup detail' : '▸ Lihat naskah & kontrol'}
+        </button>
+        <span style={{ flex: 1 }} />
+        {onEdit && <button className="link-btn" onClick={() => onEdit(content)}>Edit</button>}
+        {onDelete && <button className="link-btn del" onClick={() => onDelete(content)}>Hapus</button>}
+      </div>
 
       {open && (
         <>

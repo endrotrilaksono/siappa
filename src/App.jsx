@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { getBrands, getPlatforms, getContents } from './lib/api'
+import { getBrands, getPlatforms, getContents, deleteContent } from './lib/api'
 import { hasCredentials } from './lib/supabase'
 import ContentCard from './components/ContentCard'
+import ContentForm from './components/ContentForm'
+import ExcelImport from './components/ExcelImport'
 
 export default function App() {
   const [brands, setBrands] = useState([])
@@ -12,6 +14,9 @@ export default function App() {
   const [counts, setCounts] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [showImport, setShowImport] = useState(false)
 
   // muat brand + platform sekali
   useEffect(() => {
@@ -49,6 +54,26 @@ export default function App() {
 
   const currentBrand = brands.find(b => b.id === brandId)
 
+  async function handleDelete(content) {
+    if (!confirm(`Hapus konten "${content.title}"? Tindakan ini permanen.`)) return
+    try {
+      await deleteContent(content.id)
+      loadContents()
+    } catch (e) {
+      alert('Gagal menghapus: ' + e.message)
+    }
+  }
+
+  function handleEdit(content) {
+    setEditing(content)
+    setShowForm(true)
+  }
+
+  function openNew() {
+    setEditing(null)
+    setShowForm(true)
+  }
+
   return (
     <div className="app">
       <div className="topbar">
@@ -74,17 +99,41 @@ export default function App() {
         )}
         {error && <div className="err-banner">Error: {error}</div>}
 
+        <div className="actionbar">
+          <button className="btn-primary" onClick={openNew}>+ Tambah konten</button>
+          <button className="btn-ghost-dark" onClick={() => setShowImport(true)}>⬆ Import Excel</button>
+        </div>
+
         {loading ? (
           <div className="loading">Memuat konten…</div>
         ) : contents.length === 0 ? (
           <div className="empty">
-            Belum ada konten untuk {currentBrand?.name} di platform ini.<br />
-            {platforms.find(p => p.id === platformId)?.slug === 'tiktok' && 'TikTok belum diisi — tambahkan lewat Supabase atau fitur tambah konten (fase berikutnya).'}
+            Belum ada konten di platform ini.<br />
+            Tekan <b>+ Tambah konten</b> atau <b>Import Excel</b> untuk mulai.
           </div>
         ) : (
-          contents.map(c => <ContentCard key={c.id} content={c} onChange={loadContents} />)
+          contents.map(c => (
+            <ContentCard key={c.id} content={c} onChange={loadContents} onEdit={handleEdit} onDelete={handleDelete} />
+          ))
         )}
       </div>
+
+      {showForm && (
+        <ContentForm
+          brandId={brandId}
+          platformId={platformId}
+          existing={editing}
+          onClose={() => setShowForm(false)}
+          onSaved={loadContents}
+        />
+      )}
+      {showImport && (
+        <ExcelImport
+          brandId={brandId}
+          onClose={() => setShowImport(false)}
+          onImported={loadContents}
+        />
+      )}
     </div>
   )
 }

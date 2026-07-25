@@ -139,3 +139,76 @@ input,textarea,select{font-family:inherit}
 
 .foldbtn{background:transparent;border:none;color:var(--primer);font-weight:700;font-size:13px;
   padding:8px 0 0;display:flex;align-items:center;gap:6px}
+
+/* ---------- action bar ---------- */
+.actionbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.btn-primary{background:var(--primer);color:#fff;border:none;font-weight:700;font-size:14px;
+  padding:11px 18px;border-radius:10px}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-primary:disabled{opacity:.6}
+.btn-ghost-dark{background:transparent;color:var(--primer);border:1px solid var(--primer);
+  font-weight:700;font-size:14px;padding:11px 18px;border-radius:10px}
+.btn-ghost-dark:hover{background:#eef}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line);
+  font-weight:700;font-size:14px;padding:11px 18px;border-radius:10px}
+
+/* ---------- card actions ---------- */
+.card-actions{display:flex;align-items:center;gap:12px}
+.link-btn{background:none;border:none;color:var(--muted);font-weight:700;font-size:13px;padding:8px 4px}
+.link-btn:hover{color:var(--primer)}
+.link-btn.del:hover{color:var(--warn)}
+
+/* ---------- modal ---------- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(18,20,58,.55);z-index:100;
+  display:flex;align-items:flex-end;justify-content:center;padding:0}
+@media(min-width:640px){.modal-backdrop{align-items:center;padding:20px}}
+.modal{background:var(--bg);width:100%;max-width:600px;max-height:92vh;border-radius:18px 18px 0 0;
+  display:flex;flex-direction:column;overflow:hidden}
+@media(min-width:640px){.modal{border-radius:18px}}
+.modal-head{display:flex;align-items:center;padding:16px 18px;background:var(--primer);color:#fff}
+.modal-head h2{margin:0;font-size:17px;font-weight:800;flex:1}
+.modal-head .x{background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;
+  border-radius:8px;font-size:20px;line-height:1}
+.modal-body{padding:18px;overflow-y:auto;flex:1}
+.modal-foot{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);background:var(--paper)}
+.modal-foot button{flex:1}
+
+/* ---------- form fields ---------- */
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--muted);margin-bottom:5px}
+.fld input,.fld select,.fld textarea{width:100%;font-family:inherit;font-size:14px;
+  border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:var(--paper)}
+.fld textarea{min-height:64px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}}
+
+/* ---------- parts editor ---------- */
+.parts-editor{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.pe-head{display:flex;align-items:center;margin-bottom:10px}
+.pe-head label{flex:1;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted)}
+.btn-sm{background:var(--primer);color:#fff;border:none;font-weight:700;font-size:12px;
+  padding:6px 12px;border-radius:8px}
+.pe-item{border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:10px;background:var(--bg)}
+.pe-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pe-num{width:22px;height:22px;border-radius:6px;background:var(--primer);color:#fff;
+  font-weight:800;font-size:12px;display:grid;place-items:center;flex:0 0 auto}
+.pe-top select{flex:1;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--paper)}
+.pe-moves{display:flex;gap:4px}
+.pe-moves button{border:1px solid var(--line);background:var(--paper);border-radius:6px;
+  font-size:12px;font-weight:700;padding:5px 8px;color:var(--ink)}
+.pe-moves button:disabled{opacity:.35}
+.pe-moves .del{color:var(--warn)}
+.pe-item textarea,.pe-item input{width:100%;font-family:inherit;font-size:13px;border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;margin-bottom:7px;background:var(--paper);resize:vertical}
+.pe-item textarea{min-height:52px}
+.pe-item textarea.ai{background:#faf5ff;border-color:#eaddff}
+
+/* ---------- excel import ---------- */
+.filebtn-lg{display:block;text-align:center;background:var(--primer);color:#fff;font-weight:700;
+  font-size:15px;padding:16px;border-radius:12px;cursor:pointer}
+.filebtn-lg:hover{filter:brightness(1.08)}
+.preview{margin-top:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.preview-head{background:var(--primer);color:#fff;font-weight:700;font-size:12px;padding:9px 12px}
+.preview-item{padding:9px 12px;border-top:1px solid var(--line);font-size:13px;background:var(--paper)}
+.status-line{margin-top:12px;font-size:13px;font-weight:700;color:var(--ok)}
