@@ -125,3 +125,87 @@ export async function getLookups() {
   ])
   return { brands: brands || [], platforms: platforms || [] }
 }
+
+// ============================================================
+// BULK DELETE KONTEN
+// ============================================================
+export async function deleteContents(ids) {
+  if (!ids || !ids.length) return 0
+  const { error } = await supabase.from('contents').delete().in('id', ids)
+  if (error) throw error
+  return ids.length
+}
+
+// ============================================================
+// MODUL HPP
+// ============================================================
+
+export async function getHppBatches() {
+  const { data, error } = await supabase
+    .from('hpp_batches')
+    .select('*, hpp_variants(*)')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  data.forEach(b => {
+    if (b.hpp_variants) b.hpp_variants.sort((a, z) => a.urutan - z.urutan)
+  })
+  return data
+}
+
+export async function createHppBatch(batch, variants) {
+  const { data: b, error } = await supabase
+    .from('hpp_batches')
+    .insert(batch)
+    .select()
+    .single()
+  if (error) throw error
+
+  if (variants && variants.length) {
+    const rows = variants.map((v, i) => ({ ...v, batch_id: b.id, urutan: i + 1 }))
+    const { error: ve } = await supabase.from('hpp_variants').insert(rows)
+    if (ve) throw ve
+  }
+  return b
+}
+
+export async function deleteHppBatch(id) {
+  const { error } = await supabase.from('hpp_batches').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
+
+export async function deleteAllHppBatches() {
+  const { error } = await supabase.from('hpp_batches').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  if (error) throw error
+  return true
+}
+
+// Import batch lama dari Apps Script (array hasil getRiwayat)
+export async function importHppLegacy(items) {
+  let ok = 0
+  for (const it of items) {
+    const s = it.state || {}
+    const batch = {
+      nama_produk: it.nama || s.nama || 'Tanpa nama',
+      total_kg: Number(s.kg) || 0,
+      harga_ikan: Number(s.hi) || 0,
+      biaya_bumbu: Number(s.hb) || 0,
+      legacy_id: it.id ? String(it.id) : null,
+      created_at: it.ts || new Date().toISOString(),
+    }
+    const variants = (s.vars || []).map(v => ({
+      ukuran_target: Number(v.u) || 0,
+      jumlah_pack: Number(v.j) || 0,
+      kelebihan: Number(v.k) || 0,
+      packaging: Number(v.pkg) || 0,
+      label: Number(v.lbl) || 0,
+      lainnya: Number(v.lain) || 0,
+      margin_ec: Number(v.mec) || 25,
+      margin_mis: Number(v.mmis) || 15,
+      harga_real: Number(v.real) || 0,
+    }))
+    await createHppBatch(batch, variants)
+    ok++
+  }
+  return ok
+}

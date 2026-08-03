@@ -13,7 +13,7 @@ function copy(text) {
   if (navigator.clipboard) navigator.clipboard.writeText(text)
 }
 
-export default function ContentCard({ content, onChange, onEdit, onDelete }) {
+export default function ContentCard({ content, onChange, onEdit, onDelete, selectMode, checked, onToggleSelect }) {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState(content.status)
   const [skipReason, setSkipReason] = useState(content.skip_reason || '')
@@ -71,8 +71,13 @@ export default function ContentCard({ content, onChange, onEdit, onDelete }) {
   const unitWord = content.format === 'thread' ? 'post' : content.format === 'carousel' ? 'slide' : 'bagian'
 
   return (
-    <div className="card">
+    <div className={`card ${selectMode ? 'selectable' : ''} ${checked ? 'checked' : ''}`}
+      onClick={selectMode ? () => onToggleSelect(content.id) : undefined}>
       <div className="card-head">
+        {selectMode && (
+          <input type="checkbox" className="card-chk" checked={!!checked}
+            onChange={() => onToggleSelect(content.id)} onClick={e => e.stopPropagation()} />
+        )}
         <h3>{content.title}</h3>
         <span className={`status-pill ${status}`}>{statusLabel(status)}</span>
       </div>
@@ -84,16 +89,18 @@ export default function ContentCard({ content, onChange, onEdit, onDelete }) {
         <span className={`chip goal-${content.goal}`}>{content.goal}</span>
       </div>
 
-      <div className="card-actions">
-        <button className="foldbtn" onClick={() => setOpen(o => !o)}>
-          {open ? '▾ Tutup detail' : '▸ Lihat naskah & kontrol'}
-        </button>
-        <span style={{ flex: 1 }} />
-        {onEdit && <button className="link-btn" onClick={() => onEdit(content)}>Edit</button>}
-        {onDelete && <button className="link-btn del" onClick={() => onDelete(content)}>Hapus</button>}
-      </div>
+      {!selectMode && (
+        <div className="card-actions">
+          <button className="foldbtn" onClick={() => setOpen(o => !o)}>
+            {open ? '▾ Tutup detail' : '▸ Lihat naskah & kontrol'}
+          </button>
+          <span style={{ flex: 1 }} />
+          {onEdit && <button className="link-btn" onClick={() => onEdit(content)}>Edit</button>}
+          {onDelete && <button className="link-btn del" onClick={() => onDelete(content)}>Hapus</button>}
+        </div>
+      )}
 
-      {open && (
+      {open && !selectMode && (
         <>
           {parts.length > 0 && (
             <div className="parts">
