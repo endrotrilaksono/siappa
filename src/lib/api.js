@@ -12,21 +12,41 @@ export async function getPlatforms() {
   return data
 }
 
+// Urutan tampilan: konten yang BELUM selesai (draft/scheduled) naik ke atas,
+// diurutkan dari tanggal posting paling dekat. Konten yang SUDAH selesai
+// (posted/skipped) turun ke bawah, diurutkan dari yang paling baru selesai.
+// Ini dipakai oleh SEMUA tab platform (Threads/Instagram/TikTok) karena
+// getContents ini satu fungsi bersama, dipanggil ulang dengan platformId
+// berbeda oleh tiap tab. Perbaikan di sini otomatis berlaku ke ketiganya.
+function sortForDisplay(list) {
+  const isDone = c => c.status === 'posted' || c.status === 'skipped'
+  const dateKey = c => `${c.scheduled_date || '9999-99-99'}T${c.scheduled_time || '00:00'}`
+
+  return [...list].sort((a, b) => {
+    const aDone = isDone(a)
+    const bDone = isDone(b)
+    if (aDone !== bDone) return aDone ? 1 : -1 // yang belum selesai duluan
+    if (!aDone) {
+      // belum selesai: tanggal terdekat duluan (ascending)
+      return dateKey(a).localeCompare(dateKey(b))
+    }
+    // sudah selesai: yang paling baru diselesaikan duluan (descending)
+    return dateKey(b).localeCompare(dateKey(a))
+  })
+}
+
 export async function getContents({ brandId, platformId }) {
   let q = supabase
     .from('contents')
     .select('*, content_parts(*), performance(*)')
-    .order('scheduled_date', { ascending: true, nullsFirst: false })
-    .order('scheduled_time', { ascending: true, nullsFirst: false })
   if (brandId) q = q.eq('brand_id', brandId)
   if (platformId) q = q.eq('platform_id', platformId)
   const { data, error } = await q
   if (error) throw error
-  // urutkan parts
   data.forEach(c => {
     if (c.content_parts) c.content_parts.sort((a, b) => a.part_order - b.part_order)
   })
-  return data
+  return sortForDisplay(data)
 }
 
 export async function updateContent(id, patch) {
@@ -52,7 +72,6 @@ export async function upsertPerformance(contentId, patch) {
 
 // ---------- CREATE / EDIT / DELETE ----------
 
-// Membuat 1 konten beserta slide/part-nya. parts = array {text, visual_type, visual_note, ai_prompt}
 export async function createContent(content, parts = []) {
   const { data: c, error } = await supabase
     .from('contents')
@@ -73,12 +92,10 @@ export async function createContent(content, parts = []) {
     const { error: pe } = await supabase.from('content_parts').insert(rows)
     if (pe) throw pe
   }
-  // baris performa kosong
   await supabase.from('performance').insert({ content_id: c.id }).select()
   return c
 }
 
-// Memperbarui 1 konten + mengganti seluruh slide-nya (hapus lama, buat baru)
 export async function saveContentWithParts(id, content, parts = []) {
   const { error } = await supabase
     .from('contents')
@@ -108,7 +125,6 @@ export async function deleteContent(id) {
   return true
 }
 
-// Import batch dari array konten (dipakai importer Excel)
 export async function importContents(items) {
   let ok = 0
   for (const item of items) {
@@ -118,7 +134,6 @@ export async function importContents(items) {
   return ok
 }
 
-// Ambil id brand & platform berdasarkan slug (untuk importer)
 export async function getLookups() {
   const [{ data: brands }, { data: platforms }] = await Promise.all([
     supabase.from('brands').select('*'),
@@ -127,9 +142,7 @@ export async function getLookups() {
   return { brands: brands || [], platforms: platforms || [] }
 }
 
-// ============================================================
-// BULK DELETE KONTEN
-// ============================================================
+// ---------- BULK DELETE KONTEN ----------
 export async function deleteContents(ids) {
   if (!ids || !ids.length) return 0
   const { error } = await supabase.from('contents').delete().in('id', ids)
@@ -181,7 +194,6 @@ export async function deleteAllHppBatches() {
   return true
 }
 
-// Import batch lama dari Apps Script (array hasil getRiwayat)
 export async function importHppLegacy(items) {
   let ok = 0
   for (const it of items) {
