@@ -16,7 +16,8 @@ export async function getContents({ brandId, platformId }) {
   let q = supabase
     .from('contents')
     .select('*, content_parts(*), performance(*)')
-    .order('sort_order', { ascending: true })
+    .order('scheduled_date', { ascending: true, nullsFirst: false })
+    .order('scheduled_time', { ascending: true, nullsFirst: false })
   if (brandId) q = q.eq('brand_id', brandId)
   if (platformId) q = q.eq('platform_id', platformId)
   const { data, error } = await q
