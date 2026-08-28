@@ -344,3 +344,17 @@ input,textarea,select{font-family:inherit}
 .hpp-toast{position:fixed;bottom:20px;right:20px;background:var(--primer-grad);color:#fff;
   padding:11px 18px;border-radius:11px;font-size:13px;font-weight:600;z-index:200;
   box-shadow:0 8px 24px rgba(10,14,107,.3)}
+
+/* ============ v7: Kongsiapa & Komponen HPP ============ */
+.k{color:#7c3aed}
+.out-tbl tr.sec.kongsiapa td{background:#f3e8ff;color:#7c3aed}
+.info-row td{font-style:italic;font-size:12px}
+.info-tag{font-size:9px;text-transform:uppercase;letter-spacing:.05em;background:var(--line);
+  color:var(--muted);padding:1px 6px;border-radius:99px;margin-left:6px;font-style:normal}
+
+.kongsiapa-fld input{border-color:#d8c5f7;background:#faf5ff}
+.fld-hint{display:block;font-size:9.5px;color:var(--muted);margin-top:3px;line-height:1.3}
+
+.comp-pick{width:100%;font-size:11px;margin-top:4px;padding:4px 6px;border-radius:6px;
+  border:1px dashed var(--line);background:var(--paper);color:var(--muted)}
+.comp-pick:focus{border-color:var(--primer);color:var(--ink)}

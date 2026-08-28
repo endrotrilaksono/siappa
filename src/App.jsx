@@ -2,9 +2,10 @@ import { useState } from 'react'
 import Sidebar from './components/Sidebar'
 import KontenModule from './modules/KontenModule'
 import HppModule from './modules/HppModule'
+import KomponenHppModule from './modules/KomponenHppModule'
 import { hasCredentials } from './lib/supabase'
 
-const TITLES = { konten: 'Konten', hpp: 'HPP Kalkulator' }
+const TITLES = { konten: 'Konten', hpp: 'HPP Kalkulator', komponen: 'Komponen HPP' }
 
 export default function App() {
   const [sbOpen, setSbOpen] = useState(false)
@@ -40,6 +41,7 @@ export default function App() {
         )}
         {module === 'konten' && <KontenModule />}
         {module === 'hpp' && <div className="body"><HppModule /></div>}
+        {module === 'komponen' && <div className="body"><KomponenHppModule /></div>}
       </main>
     </div>
   )

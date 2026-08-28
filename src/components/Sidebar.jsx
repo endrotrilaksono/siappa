@@ -3,10 +3,10 @@ import { useEffect } from 'react'
 const MODULES = [
   { id: 'konten', label: 'Konten', desc: 'Threads · Instagram · TikTok', icon: '📝' },
   { id: 'hpp', label: 'HPP', desc: 'Kalkulator batch & harga jual', icon: '🧮' },
+  { id: 'komponen', label: 'Komponen HPP', desc: 'Master kemasan & harga', icon: '📦' },
 ]
 
 export default function Sidebar({ open, onClose, active, onSelect }) {
-  // tutup dengan Escape
   useEffect(() => {
     if (!open) return
     const h = e => { if (e.key === 'Escape') onClose() }

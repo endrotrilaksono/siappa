@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getHppBatches, createHppBatch, deleteHppBatch, importHppLegacy } from '../lib/api'
+import { getHppBatches, createHppBatch, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
 
 const emptyVar = () => ({
   ukuran_target: '', jumlah_pack: '', kelebihan: '',
   packaging: '', label: '', lainnya: '',
   margin_ec: '25', margin_mis: '15', harga_real: '',
+  margin_kongsiapa: '20', harga_real_kongsiapa: '',
 })
 
 const fdt = ts => {
@@ -14,10 +15,29 @@ const fdt = ts => {
     ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 }
 
+// dropdown kecil untuk pilih komponen tersimpan, mengisi angka ke field target
+function ComponentPicker({ components, onPick }) {
+  if (!components.length) return null
+  return (
+    <select className="comp-pick" defaultValue=""
+      onChange={e => {
+        const comp = components.find(c => c.id === e.target.value)
+        if (comp) onPick(comp.harga_per_pcs)
+        e.target.value = ''
+      }}>
+      <option value="">+ pilih dari komponen</option>
+      {components.map(c => (
+        <option key={c.id} value={c.id}>{c.nama} — {rp(c.harga_per_pcs)}</option>
+      ))}
+    </select>
+  )
+}
+
 export default function HppModule() {
   const [base, setBase] = useState({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
   const [vars, setVars] = useState([emptyVar(), emptyVar()])
   const [hist, setHist] = useState([])
+  const [components, setComponents] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -31,8 +51,10 @@ export default function HppModule() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
-    try { setHist(await getHppBatches()) }
-    catch (e) { setError(e.message) }
+    try {
+      const [batches, comps] = await Promise.all([getHppBatches(), getHppComponents().catch(() => [])])
+      setHist(batches); setComponents(comps)
+    } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -48,13 +70,12 @@ export default function HppModule() {
     try {
       await createHppBatch({
         nama_produk: base.nama_produk || 'Tanpa nama',
-        total_kg: nv(base.total_kg),
-        harga_ikan: nv(base.harga_ikan),
-        biaya_bumbu: nv(base.biaya_bumbu),
+        total_kg: nv(base.total_kg), harga_ikan: nv(base.harga_ikan), biaya_bumbu: nv(base.biaya_bumbu),
       }, vars.map(v => ({
         ukuran_target: nv(v.ukuran_target), jumlah_pack: nv(v.jumlah_pack), kelebihan: nv(v.kelebihan),
         packaging: nv(v.packaging), label: nv(v.label), lainnya: nv(v.lainnya),
         margin_ec: nv(v.margin_ec), margin_mis: nv(v.margin_mis), harga_real: nv(v.harga_real),
+        margin_kongsiapa: nv(v.margin_kongsiapa), harga_real_kongsiapa: nv(v.harga_real_kongsiapa),
       })))
       flash('✓ Batch tersimpan')
       load()
@@ -77,6 +98,7 @@ export default function HppModule() {
       ukuran_target: v.ukuran_target ?? '', jumlah_pack: v.jumlah_pack ?? '', kelebihan: v.kelebihan ?? '',
       packaging: v.packaging ?? '', label: v.label ?? '', lainnya: v.lainnya ?? '',
       margin_ec: v.margin_ec ?? '25', margin_mis: v.margin_mis ?? '15', harga_real: v.harga_real ?? '',
+      margin_kongsiapa: v.margin_kongsiapa ?? '20', harga_real_kongsiapa: v.harga_real_kongsiapa ?? '',
     })) : [emptyVar()])
     window.scrollTo({ top: 0, behavior: 'smooth' })
     flash('Data batch dimuat ke form')
@@ -115,19 +137,17 @@ export default function HppModule() {
       `${q('Total Gram')},${q(Math.round(R.tg))}`,
       `${q('Yield Rate (%)')},${q(R.yr.toFixed(1))}`, '',
       q('KALKULASI HPP'),
-      `${q('HPP Ikan+Bumbu /pack')},${R.C.map(c => Math.round(c.hI)).join(',')}`,
-      `${q('HPP Kemasan /pack')},${R.C.map(c => Math.round(c.hK)).join(',')}`,
       `${q('HPP Total /pack')},${R.C.map(c => Math.round(c.hpp)).join(',')}`, '',
       q('END CUSTOMER'),
-      vrow('Margin EC (%)', v => nv(v.margin_ec)),
       `${q('Harga Jual EC')},${R.C.map(c => Math.round(c.ec)).join(',')}`,
-      `${q('Untung /pack')},${R.C.map(c => Math.round(c.uec)).join(',')}`,
-      `${q('Untung Total')},${R.C.map(c => Math.round(c.uect)).join(',')}`, '',
+      `${q('Untung /pack')},${R.C.map(c => Math.round(c.uec)).join(',')}`, '',
       q('MIS / RESELLER'),
-      vrow('Margin MIS (%)', v => nv(v.margin_mis)),
       `${q('Harga Jual MIS')},${R.C.map(c => Math.round(c.ms)).join(',')}`,
-      `${q('Untung /pack')},${R.C.map(c => Math.round(c.ums)).join(',')}`,
-      `${q('Untung Total')},${R.C.map(c => Math.round(c.umst)).join(',')}`,
+      `${q('Untung /pack')},${R.C.map(c => Math.round(c.ums)).join(',')}`, '',
+      q('KONGSIAPA'),
+      `${q('Harga Jual Kongsiapa')},${R.C.map(c => Math.round(c.hargaKongsiapa)).join(',')}`,
+      `${q('Untung /pack')},${R.C.map(c => Math.round(c.ukongsiapa)).join(',')}`,
+      `${q('Margin Kongsiapa -> EC (info)')},${R.C.map(c => c.marginKongsiapaKeEc !== null ? c.marginKongsiapaKeEc.toFixed(1) : '').join(',')}`,
     ]
     const a = document.createElement('a')
     a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(lines.join('\n'))
@@ -135,14 +155,14 @@ export default function HppModule() {
     a.click()
   }
 
-  const hasReal = vars.some(v => nv(v.harga_real) > 0)
+  const hasRealEc = vars.some(v => nv(v.harga_real) > 0)
+  const hasRealKongsiapa = vars.some(v => nv(v.harga_real_kongsiapa) > 0)
   const ready = R.mo > 0 && R.tg > 0
 
   return (
     <div className="hpp">
       {toast && <div className="hpp-toast">{toast}</div>}
 
-      {/* ---- BAHAN BAKU ---- */}
       <div className="card">
         <div className="card-head-h">Bahan Baku</div>
         <div className="hpp-grid2">
@@ -173,7 +193,6 @@ export default function HppModule() {
         </div>
       </div>
 
-      {/* ---- VARIAN ---- */}
       <div className="card">
         <div className="card-head-h">Varian Produksi</div>
         <div className="var-wrap">
@@ -196,22 +215,36 @@ export default function HppModule() {
                 </div>
 
                 <div className="var-sec">Kemasan / pack (Rp)</div>
-                <div className="fld-sm"><label>Packaging</label>
-                  <input type="number" placeholder="0" value={v.packaging} onChange={e => setV(i, 'packaging', e.target.value)} /></div>
-                <div className="fld-sm"><label>Label</label>
-                  <input type="number" placeholder="0" value={v.label} onChange={e => setV(i, 'label', e.target.value)} /></div>
-                <div className="fld-sm"><label>Lainnya</label>
-                  <input type="number" placeholder="0" value={v.lainnya} onChange={e => setV(i, 'lainnya', e.target.value)} /></div>
+                <div className="fld-sm">
+                  <label>Packaging</label>
+                  <input type="number" placeholder="0" value={v.packaging} onChange={e => setV(i, 'packaging', e.target.value)} />
+                  <ComponentPicker components={components} onPick={val => setV(i, 'packaging', val)} />
+                </div>
+                <div className="fld-sm">
+                  <label>Label</label>
+                  <input type="number" placeholder="0" value={v.label} onChange={e => setV(i, 'label', e.target.value)} />
+                  <ComponentPicker components={components} onPick={val => setV(i, 'label', val)} />
+                </div>
+                <div className="fld-sm">
+                  <label>Lainnya</label>
+                  <input type="number" placeholder="0" value={v.lainnya} onChange={e => setV(i, 'lainnya', e.target.value)} />
+                  <ComponentPicker components={components} onPick={val => setV(i, 'lainnya', val)} />
+                </div>
 
                 <div className="var-sec">Target margin (%)</div>
                 <div className="fld-sm"><label>End customer</label>
                   <input type="number" min="0" max="100" value={v.margin_ec} onChange={e => setV(i, 'margin_ec', e.target.value)} /></div>
                 <div className="fld-sm"><label>MIS / Reseller</label>
                   <input type="number" min="0" max="100" value={v.margin_mis} onChange={e => setV(i, 'margin_mis', e.target.value)} /></div>
+                <div className="fld-sm kongsiapa-fld"><label>Ke Kongsiapa</label>
+                  <input type="number" min="0" max="100" value={v.margin_kongsiapa} onChange={e => setV(i, 'margin_kongsiapa', e.target.value)} />
+                  <span className="fld-hint">EC tidak ikut berubah dari ini</span></div>
 
                 <div className="var-sec">Harga jual real (opsional)</div>
-                <div className="fld-sm real"><label>Rp</label>
-                  <input type="number" placeholder="cek margin aktual" value={v.harga_real} onChange={e => setV(i, 'harga_real', e.target.value)} /></div>
+                <div className="fld-sm real"><label>Real ke End Customer</label>
+                  <input type="number" placeholder="cek margin aktual EC" value={v.harga_real} onChange={e => setV(i, 'harga_real', e.target.value)} /></div>
+                <div className="fld-sm real"><label>Real ke Kongsiapa</label>
+                  <input type="number" placeholder="cek margin aktual Kongsiapa" value={v.harga_real_kongsiapa} onChange={e => setV(i, 'harga_real_kongsiapa', e.target.value)} /></div>
               </div>
             )
           })}
@@ -219,7 +252,6 @@ export default function HppModule() {
         <button className="btn-ghost-dark" onClick={addVar}>+ Tambah Varian</button>
       </div>
 
-      {/* ---- OUTPUT ---- */}
       <div className="card">
         <div className="card-head-h">Hasil Kalkulasi HPP</div>
         {!ready ? (
@@ -251,12 +283,27 @@ export default function HppModule() {
                 <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i}>{rp(c.ums)}</td>)}</tr>
                 <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i}>{rp(c.umst)}</td>)}</tr>
 
-                {hasReal && <>
-                  <tr className="sec"><td colSpan={vars.length + 1}>Harga Jual Real</td></tr>
-                  <tr className="tot"><td>Harga jual real</td>{vars.map((v, i) => <td key={i}>{nv(v.harga_real) > 0 ? rp(nv(v.harga_real)) : '—'}</td>)}</tr>
-                  <tr><td>Margin real</td>{R.C.map((c, i) => <td key={i} className={c.mR !== null ? marginClass(c.mR) : ''}>{c.mR !== null ? pc(c.mR) : '—'}</td>)}</tr>
+                <tr className="sec kongsiapa"><td colSpan={vars.length + 1}>Kongsiapa (mudharabah)</td></tr>
+                <tr className="tot"><td>Harga jual Kongsiapa</td>{R.C.map((c, i) => <td key={i} className="k">{rp(c.hargaKongsiapa)}</td>)}</tr>
+                <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i} className="k">{rp(c.ukongsiapa)}</td>)}</tr>
+                <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i} className="k">{rp(c.ukongsiapaTotal)}</td>)}</tr>
+                <tr className="info-row"><td>Margin Kongsiapa → EC <span className="info-tag">info</span></td>
+                  {R.C.map((c, i) => <td key={i} className="muted">{c.marginKongsiapaKeEc !== null ? pc(c.marginKongsiapaKeEc) : '—'}</td>)}</tr>
+
+                {hasRealEc && <>
+                  <tr className="sec"><td colSpan={vars.length + 1}>Harga Real — End Customer</td></tr>
+                  <tr className="tot"><td>Harga real EC</td>{vars.map((v, i) => <td key={i}>{nv(v.harga_real) > 0 ? rp(nv(v.harga_real)) : '—'}</td>)}</tr>
+                  <tr><td>Margin real EC</td>{R.C.map((c, i) => <td key={i} className={c.mR !== null ? marginClass(c.mR) : ''}>{c.mR !== null ? pc(c.mR) : '—'}</td>)}</tr>
                   <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i} className={c.uR !== null ? (c.uR > 0 ? 'g' : 'r') : ''}>{c.uR !== null ? rp(c.uR) : '—'}</td>)}</tr>
                   <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i} className={c.uRt !== null ? (c.uRt > 0 ? 'g' : 'r') : ''}>{c.uRt !== null ? rp(c.uRt) : '—'}</td>)}</tr>
+                </>}
+
+                {hasRealKongsiapa && <>
+                  <tr className="sec kongsiapa"><td colSpan={vars.length + 1}>Harga Real — Kongsiapa</td></tr>
+                  <tr className="tot"><td>Harga real Kongsiapa</td>{vars.map((v, i) => <td key={i}>{nv(v.harga_real_kongsiapa) > 0 ? rp(nv(v.harga_real_kongsiapa)) : '—'}</td>)}</tr>
+                  <tr><td>Margin real Kongsiapa</td>{R.C.map((c, i) => <td key={i} className={c.mRKongsiapa !== null ? marginClass(c.mRKongsiapa) : ''}>{c.mRKongsiapa !== null ? pc(c.mRKongsiapa) : '—'}</td>)}</tr>
+                  <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i} className={c.uRKongsiapa !== null ? (c.uRKongsiapa > 0 ? 'g' : 'r') : ''}>{c.uRKongsiapa !== null ? rp(c.uRKongsiapa) : '—'}</td>)}</tr>
+                  <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i} className={c.uRKongsiapaTotal !== null ? (c.uRKongsiapaTotal > 0 ? 'g' : 'r') : ''}>{c.uRKongsiapaTotal !== null ? rp(c.uRKongsiapaTotal) : '—'}</td>)}</tr>
                 </>}
               </tbody>
             </table>
@@ -271,7 +318,6 @@ export default function HppModule() {
         <button className="btn-ghost-dark" onClick={exportCSV}>↓ Export CSV</button>
       </div>
 
-      {/* ---- RIWAYAT ---- */}
       <div className="hist-head">
         <h3>Riwayat Batch</h3>
         <button className="link-btn" onClick={() => setShowImport(s => !s)}>Import data lama</button>

@@ -12,33 +12,20 @@ export async function getPlatforms() {
   return data
 }
 
-// Urutan tampilan: konten yang BELUM selesai (draft/scheduled) naik ke atas,
-// diurutkan dari tanggal posting paling dekat. Konten yang SUDAH selesai
-// (posted/skipped) turun ke bawah, diurutkan dari yang paling baru selesai.
-// Ini dipakai oleh SEMUA tab platform (Threads/Instagram/TikTok) karena
-// getContents ini satu fungsi bersama, dipanggil ulang dengan platformId
-// berbeda oleh tiap tab. Perbaikan di sini otomatis berlaku ke ketiganya.
 function sortForDisplay(list) {
   const isDone = c => c.status === 'posted' || c.status === 'skipped'
   const dateKey = c => `${c.scheduled_date || '9999-99-99'}T${c.scheduled_time || '00:00'}`
-
   return [...list].sort((a, b) => {
     const aDone = isDone(a)
     const bDone = isDone(b)
-    if (aDone !== bDone) return aDone ? 1 : -1 // yang belum selesai duluan
-    if (!aDone) {
-      // belum selesai: tanggal terdekat duluan (ascending)
-      return dateKey(a).localeCompare(dateKey(b))
-    }
-    // sudah selesai: yang paling baru diselesaikan duluan (descending)
+    if (aDone !== bDone) return aDone ? 1 : -1
+    if (!aDone) return dateKey(a).localeCompare(dateKey(b))
     return dateKey(b).localeCompare(dateKey(a))
   })
 }
 
 export async function getContents({ brandId, platformId }) {
-  let q = supabase
-    .from('contents')
-    .select('*, content_parts(*), performance(*)')
+  let q = supabase.from('contents').select('*, content_parts(*), performance(*)')
   if (brandId) q = q.eq('brand_id', brandId)
   if (platformId) q = q.eq('platform_id', platformId)
   const { data, error } = await q
@@ -70,24 +57,14 @@ export async function upsertPerformance(contentId, patch) {
   return data
 }
 
-// ---------- CREATE / EDIT / DELETE ----------
-
 export async function createContent(content, parts = []) {
-  const { data: c, error } = await supabase
-    .from('contents')
-    .insert(content)
-    .select()
-    .single()
+  const { data: c, error } = await supabase.from('contents').insert(content).select().single()
   if (error) throw error
-
   if (parts.length) {
     const rows = parts.map((p, i) => ({
-      content_id: c.id,
-      part_order: i + 1,
-      text: p.text || '',
+      content_id: c.id, part_order: i + 1, text: p.text || '',
       visual_type: p.visual_type || 'desain_teks',
-      visual_note: p.visual_note || null,
-      ai_prompt: p.ai_prompt || null,
+      visual_note: p.visual_note || null, ai_prompt: p.ai_prompt || null,
     }))
     const { error: pe } = await supabase.from('content_parts').insert(rows)
     if (pe) throw pe
@@ -97,21 +74,15 @@ export async function createContent(content, parts = []) {
 }
 
 export async function saveContentWithParts(id, content, parts = []) {
-  const { error } = await supabase
-    .from('contents')
-    .update({ ...content, updated_at: new Date().toISOString() })
-    .eq('id', id)
+  const { error } = await supabase.from('contents')
+    .update({ ...content, updated_at: new Date().toISOString() }).eq('id', id)
   if (error) throw error
-
   await supabase.from('content_parts').delete().eq('content_id', id)
   if (parts.length) {
     const rows = parts.map((p, i) => ({
-      content_id: id,
-      part_order: i + 1,
-      text: p.text || '',
+      content_id: id, part_order: i + 1, text: p.text || '',
       visual_type: p.visual_type || 'desain_teks',
-      visual_note: p.visual_note || null,
-      ai_prompt: p.ai_prompt || null,
+      visual_note: p.visual_note || null, ai_prompt: p.ai_prompt || null,
     }))
     const { error: pe } = await supabase.from('content_parts').insert(rows)
     if (pe) throw pe
@@ -127,22 +98,17 @@ export async function deleteContent(id) {
 
 export async function importContents(items) {
   let ok = 0
-  for (const item of items) {
-    await createContent(item.content, item.parts)
-    ok++
-  }
+  for (const item of items) { await createContent(item.content, item.parts); ok++ }
   return ok
 }
 
 export async function getLookups() {
   const [{ data: brands }, { data: platforms }] = await Promise.all([
-    supabase.from('brands').select('*'),
-    supabase.from('platforms').select('*'),
+    supabase.from('brands').select('*'), supabase.from('platforms').select('*'),
   ])
   return { brands: brands || [], platforms: platforms || [] }
 }
 
-// ---------- BULK DELETE KONTEN ----------
 export async function deleteContents(ids) {
   if (!ids || !ids.length) return 0
   const { error } = await supabase.from('contents').delete().in('id', ids)
@@ -156,24 +122,15 @@ export async function deleteContents(ids) {
 
 export async function getHppBatches() {
   const { data, error } = await supabase
-    .from('hpp_batches')
-    .select('*, hpp_variants(*)')
-    .order('created_at', { ascending: false })
+    .from('hpp_batches').select('*, hpp_variants(*)').order('created_at', { ascending: false })
   if (error) throw error
-  data.forEach(b => {
-    if (b.hpp_variants) b.hpp_variants.sort((a, z) => a.urutan - z.urutan)
-  })
+  data.forEach(b => { if (b.hpp_variants) b.hpp_variants.sort((a, z) => a.urutan - z.urutan) })
   return data
 }
 
 export async function createHppBatch(batch, variants) {
-  const { data: b, error } = await supabase
-    .from('hpp_batches')
-    .insert(batch)
-    .select()
-    .single()
+  const { data: b, error } = await supabase.from('hpp_batches').insert(batch).select().single()
   if (error) throw error
-
   if (variants && variants.length) {
     const rows = variants.map((v, i) => ({ ...v, batch_id: b.id, urutan: i + 1 }))
     const { error: ve } = await supabase.from('hpp_variants').insert(rows)
@@ -200,25 +157,47 @@ export async function importHppLegacy(items) {
     const s = it.state || {}
     const batch = {
       nama_produk: it.nama || s.nama || 'Tanpa nama',
-      total_kg: Number(s.kg) || 0,
-      harga_ikan: Number(s.hi) || 0,
-      biaya_bumbu: Number(s.hb) || 0,
-      legacy_id: it.id ? String(it.id) : null,
-      created_at: it.ts || new Date().toISOString(),
+      total_kg: Number(s.kg) || 0, harga_ikan: Number(s.hi) || 0, biaya_bumbu: Number(s.hb) || 0,
+      legacy_id: it.id ? String(it.id) : null, created_at: it.ts || new Date().toISOString(),
     }
     const variants = (s.vars || []).map(v => ({
-      ukuran_target: Number(v.u) || 0,
-      jumlah_pack: Number(v.j) || 0,
-      kelebihan: Number(v.k) || 0,
-      packaging: Number(v.pkg) || 0,
-      label: Number(v.lbl) || 0,
-      lainnya: Number(v.lain) || 0,
-      margin_ec: Number(v.mec) || 25,
-      margin_mis: Number(v.mmis) || 15,
-      harga_real: Number(v.real) || 0,
+      ukuran_target: Number(v.u) || 0, jumlah_pack: Number(v.j) || 0, kelebihan: Number(v.k) || 0,
+      packaging: Number(v.pkg) || 0, label: Number(v.lbl) || 0, lainnya: Number(v.lain) || 0,
+      margin_ec: Number(v.mec) || 25, margin_mis: Number(v.mmis) || 15, harga_real: Number(v.real) || 0,
     }))
     await createHppBatch(batch, variants)
     ok++
   }
   return ok
+}
+
+// ============================================================
+// KOMPONEN HPP (master kemasan & harga, dipanggil di form varian)
+// ============================================================
+
+export async function getHppComponents() {
+  const { data, error } = await supabase.from('hpp_components').select('*').order('nama')
+  if (error) throw error
+  return data
+}
+
+export async function createHppComponent(item) {
+  const { data, error } = await supabase.from('hpp_components').insert(item).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function updateHppComponent(id, patch) {
+  const { data, error } = await supabase
+    .from('hpp_components')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteHppComponent(id) {
+  const { error } = await supabase.from('hpp_components').delete().eq('id', id)
+  if (error) throw error
+  return true
 }
