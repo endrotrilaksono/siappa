@@ -358,3 +358,22 @@ input,textarea,select{font-family:inherit}
 .comp-pick{width:100%;font-size:11px;margin-top:4px;padding:4px 6px;border-radius:6px;
   border:1px dashed var(--line);background:var(--paper);color:var(--muted)}
 .comp-pick:focus{border-color:var(--primer);color:var(--ink)}
+
+/* ============ AUTH / LOGIN ============ */
+.auth-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:14px}
+
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--primer-grad);padding:20px}
+.login-card{background:var(--paper);border-radius:18px;padding:32px 28px;width:100%;
+  max-width:360px;box-shadow:0 20px 60px rgba(10,14,107,.35)}
+.login-brand{font-size:24px;font-weight:800;color:var(--primer)}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.login-btn{width:100%;margin-top:6px}
+.login-err{background:#fdeae5;color:var(--warn);font-size:13px;font-weight:600;
+  padding:9px 12px;border-radius:9px;margin-bottom:14px}
+.login-note{text-align:center;font-size:12px;color:var(--muted);margin-top:16px}
+
+.logout-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+  color:#fff;font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;margin-left:8px}
+.logout-btn:hover{background:rgba(255,255,255,.2)}
