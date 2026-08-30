@@ -279,18 +279,23 @@ export default function HppModule() {
                     <div className={`jalur-blok ${j.cls}`} key={j.key}>
                       <div className="var-sec jalur-sec">Harga ke {j.label} {j.sub && <span className="jalur-sub">{j.sub}</span>}</div>
                       <div className="fld-sm">
-                        <label>Margin target (%)</label>
+                        <label>Margin (%)</label>
                         <input type="number" min="0" max="100" value={v[j.marginField]}
                           onChange={e => setV(i, j.marginField, e.target.value)} />
                       </div>
                       {jc && jc.target > 0 && (
-                        <div className="target-preview">Harga target: <b>{rp(jc.target)}</b></div>
+                        <div className="target-preview">Harga jual: <b>{rp(jc.target)}</b></div>
                       )}
                       <div className="fld-sm real">
                         <label>Harga real</label>
                         <input type="number" placeholder="0" value={v[j.realField]}
                           onChange={e => setV(i, j.realField, e.target.value)} />
                       </div>
+                      {jc && jc.untungReal !== null && (
+                        <div className={`untung-preview ${jc.untungReal >= 0 ? 'g' : 'r'}`}>
+                          Untung: {rp(jc.untungReal)} / pack
+                        </div>
+                      )}
                       {last && (
                         <div className="harga-terakhir">
                           Harga terakhir: <b>{rp(last.harga)}</b> ({fdtShort(last.created_at)})

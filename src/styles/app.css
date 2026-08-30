@@ -402,3 +402,33 @@ input,textarea,select{font-family:inherit}
 .hpp-preview-hpp b{color:var(--primer)}
 
 /* datalist input tetap pakai style .fld input biasa, tidak perlu tambahan */
+
+/* ============ v9b: angka rata, hapus spinner, untung di form ============ */
+
+/* angka rata lebar sama di semua input & tampilan angka */
+input[type="number"],
+.out-tbl td, .hpp-stats b, .target-preview b, .harga-terakhir b,
+.untung-preview, .fld-sm input, .hist-tbl td.accent{
+  font-variant-numeric: tabular-nums;
+}
+
+/* hapus panah naik/turun di semua input angka, seluruh app,
+   supaya scroll/klik tidak sengaja mengubah angka margin/harga */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"]{
+  -moz-appearance: textfield;
+}
+
+/* baris untung langsung di bawah harga real, per jalur */
+.untung-preview{
+  font-size: 12px;
+  font-weight: 700;
+  margin: 3px 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.untung-preview.g{ color: var(--ok); }
+.untung-preview.r{ color: var(--warn); }

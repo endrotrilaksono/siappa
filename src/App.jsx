@@ -39,12 +39,12 @@ function Shell({ signOut }) {
           </div>
         )}
         <Routes>
-          <Route path="/" element={<Navigate to="/konten" replace />} />
+          <Route path="/" element={<Navigate to="/hpp" replace />} />
           <Route path="/konten" element={<KontenModule />} />
           <Route path="/hpp" element={<div className="body"><HppModule /></div>} />
           <Route path="/komponen" element={<div className="body"><KomponenHppModule /></div>} />
-          {/* fallback: path tak dikenal balik ke konten, bukan halaman putih */}
-          <Route path="*" element={<Navigate to="/konten" replace />} />
+          {/* fallback: path tak dikenal balik ke HPP, bukan halaman putih */}
+          <Route path="*" element={<Navigate to="/hpp" replace />} />
         </Routes>
       </main>
     </div>
