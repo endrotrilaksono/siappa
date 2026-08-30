@@ -20,7 +20,7 @@ html,body{margin:0;padding:0}
 body{
   background:var(--bg);
   color:var(--ink);
-  font-family:'Raleway',system-ui,-apple-system,sans-serif;
+  font-family:'Merriweather','AngkaRata',Georgia,serif;
   font-size:15px;line-height:1.55;
   -webkit-font-smoothing:antialiased;
 }
@@ -125,7 +125,7 @@ input,textarea,select{font-family:inherit}
 .seg button.on.posted{background:var(--ok);color:#fff;border-color:var(--ok)}
 .seg button.on.skipped{background:var(--skip);color:#fff;border-color:var(--skip)}
 .seg button.on.draft{background:var(--muted);color:#fff;border-color:var(--muted)}
-.time-in{font-family:'Raleway';font-weight:700;font-size:13px;border:1px solid var(--line);
+.time-in{font-family:'Merriweather','AngkaRata',Georgia,serif;font-weight:700;font-size:13px;border:1px solid var(--line);
   border-radius:8px;padding:6px 10px;background:var(--bg)}
 .reason-sel{font-size:12.5px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 
@@ -432,3 +432,44 @@ input[type="number"]{
 }
 .untung-preview.g{ color: var(--ok); }
 .untung-preview.r{ color: var(--warn); }
+/* ============================================================
+   GANTI FONT: Raleway -> Merriweather (seluruh app)
+   ============================================================
+   Merriweather itu SERIF, beda karakter dari Raleway (sans-serif).
+   Ini perubahan besar ke kesan visual seluruh Siappa, bukan cuma
+   ganti font angka.
+
+   SOAL ANGKA RATA: ada dua sumber yang saling bertentangan soal
+   apakah Merriweather punya angka tabular sendiri. Daripada
+   berjudi, dipasang JAMINAN yang sama seperti solusi darurat
+   Raleway kemarin: digit 0-9 dialihkan ke font sistem yang pasti
+   rata, TERLEPAS dari kemampuan asli Merriweather. Jadi hasilnya
+   rata dijamin, bukan mengandalkan Merriweather.
+   ============================================================ */
+
+@font-face{
+  font-family: 'AngkaRata';
+  src: local('Segoe UI'), local('Helvetica Neue'), local('Helvetica'),
+       local('Arial'), local('Roboto');
+  unicode-range: U+0030-0039;
+}
+
+body{
+  font-family: 'Merriweather', 'AngkaRata', Georgia, serif;
+}
+
+/* Selektor spesifik yang sebelumnya menyebut 'Raleway' secara eksplisit
+   TIDAK otomatis ikut berubah lewat body{} di atas, karena selector
+   class (mis. .sb-brand, .login-brand) punya spesifisitas lebih tinggi
+   dari selector body. Semua itu harus dicari manual dan diganti satu
+   satu, lihat instruksi Claude Code yang menyertai file ini. */
+
+/* Angka yang menampilkan hasil kalkulasi/harga tetap wajib pakai
+   jaminan AngkaRata + tabular-nums, sama seperti sebelumnya, cuma
+   font utamanya sekarang Merriweather bukan Raleway */
+input[type="number"],
+.out-tbl td, .hpp-stats b, .target-preview b, .harga-terakhir b,
+.untung-preview, .fld-sm input, .hist-tbl td.accent{
+  font-variant-numeric: tabular-nums;
+  font-family: 'Merriweather', 'AngkaRata', Georgia, serif;
+}
