@@ -1,3 +1,4 @@
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import Sidebar from './components/Sidebar'
 import KontenModule from './modules/KontenModule'
@@ -6,48 +7,57 @@ import KomponenHppModule from './modules/KomponenHppModule'
 import AuthGate from './components/AuthGate'
 import { hasCredentials } from './lib/supabase'
 
-const TITLES = { konten: 'Konten', hpp: 'HPP Kalkulator', komponen: 'Komponen HPP' }
+const TITLES = { '/konten': 'Konten', '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP' }
+
+function Shell({ signOut }) {
+  const [sbOpen, setSbOpen] = useState(false)
+  const location = useLocation()
+  const title = TITLES[location.pathname] || ''
+
+  return (
+    <div className="shell">
+      <Sidebar open={sbOpen} onClose={() => setSbOpen(false)} />
+
+      <header className="topbar">
+        <button className="burger" onClick={() => setSbOpen(true)} aria-label="Buka menu">
+          <span></span><span></span><span></span>
+        </button>
+        <div className="tb-titles">
+          <h1>Siappa</h1>
+          <span className="tb-mod">{title}</span>
+        </div>
+        <span className="brand-label">Ibu Siapa</span>
+        <button className="logout-btn" onClick={signOut}>Keluar</button>
+      </header>
+
+      <main className="content">
+        {!hasCredentials && (
+          <div className="body">
+            <div className="err-banner">
+              Credential Supabase belum diisi. Buat <b>.env.local</b> dari <b>.env.example</b>, lalu restart <b>npm run dev</b>.
+            </div>
+          </div>
+        )}
+        <Routes>
+          <Route path="/" element={<Navigate to="/konten" replace />} />
+          <Route path="/konten" element={<KontenModule />} />
+          <Route path="/hpp" element={<div className="body"><HppModule /></div>} />
+          <Route path="/komponen" element={<div className="body"><KomponenHppModule /></div>} />
+          {/* fallback: path tak dikenal balik ke konten, bukan halaman putih */}
+          <Route path="*" element={<Navigate to="/konten" replace />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
 
 export default function App() {
-  const [sbOpen, setSbOpen] = useState(false)
-  const [module, setModule] = useState('konten')
-
   return (
     <AuthGate>
       {(session, signOut) => (
-        <div className="shell">
-          <Sidebar
-            open={sbOpen}
-            onClose={() => setSbOpen(false)}
-            active={module}
-            onSelect={setModule}
-          />
-
-          <header className="topbar">
-            <button className="burger" onClick={() => setSbOpen(true)} aria-label="Buka menu">
-              <span></span><span></span><span></span>
-            </button>
-            <div className="tb-titles">
-              <h1>Siappa</h1>
-              <span className="tb-mod">{TITLES[module]}</span>
-            </div>
-            <span className="brand-label">Ibu Siapa</span>
-            <button className="logout-btn" onClick={signOut}>Keluar</button>
-          </header>
-
-          <main className="content">
-            {!hasCredentials && (
-              <div className="body">
-                <div className="err-banner">
-                  Credential Supabase belum diisi. Buat <b>.env.local</b> dari <b>.env.example</b>, lalu restart <b>npm run dev</b>.
-                </div>
-              </div>
-            )}
-            {module === 'konten' && <KontenModule />}
-            {module === 'hpp' && <div className="body"><HppModule /></div>}
-            {module === 'komponen' && <div className="body"><KomponenHppModule /></div>}
-          </main>
-        </div>
+        <BrowserRouter>
+          <Shell signOut={signOut} />
+        </BrowserRouter>
       )}
     </AuthGate>
   )

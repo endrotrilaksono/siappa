@@ -1,22 +1,20 @@
 // ============================================================
-// MESIN HITUNG HPP
-// Rumus dasar (HPP, EC, MIS) DISALIN PERSIS dari kalkulator lama.
-// Jangan diubah tanpa verifikasi ulang terhadap batch lama.
+// MESIN HITUNG HPP — v9
+// Rumus dasar (HPP, alokasi modal per gram) TIDAK berubah dari versi
+// sebelumnya, sudah diverifikasi berulang kali. Yang berubah di v9:
 //
-// TAMBAHAN v7: jalur Kongsiapa (divisi mudharabah).
-// - Margin HPP -> Kongsiapa: INPUT bebas dari user.
-// - Harga Kongsiapa: dihitung dari HPP dan margin itu, rumus sama
-//   persis seperti EC/MIS (HPP / (1 - margin%)).
-// - EC TIDAK BERUBAH sama sekali. Tetap dihitung langsung dari HPP,
-//   tidak peduli ada jalur Kongsiapa atau tidak. Ini aturan mutlak,
-//   EC harus identik antara dilihat dari Ibu Siapa atau dari Kongsiapa.
-// - Margin Kongsiapa -> EC: BUKAN input, murni angka informasi hasil
-//   hitung mundur, selisih antara EC dan Harga Kongsiapa. Menunjukkan
-//   markup tersirat kalau Kongsiapa jual di harga EC yang sama.
-// - Harga real sekarang ADA DUA, terpisah: harga real EC (kolom lama,
-//   harga_real) dan harga real Kongsiapa (kolom baru, harga_real_kongsiapa).
-//   Margin real masing-masing dihitung terhadap HPP (bukan terhadap
-//   harga target), sama seperti logika margin real EC yang sudah ada.
+// 1. Hasil disusun per JALUR PENJUALAN (kongsiapa, reseller, ec), urut
+//    hirarki: Kongsiapa -> Reseller -> End Customer. Bukan lagi array
+//    datar yang harus dibaca satu-satu.
+// 2. Tiap jalur punya: margin target (input), harga target (dihitung
+//    dari margin, dipakai untuk PRATINJAU di form, bukan tabel hasil),
+//    harga real (input), margin real vs HPP, untung real /pack, untung
+//    real total batch.
+// 3. Reseller sekarang JUGA punya harga real (sebelumnya tidak ada).
+// 4. Margin Kongsiapa -> EC sekarang dihitung dari DUA HARGA REAL
+//    (real Kongsiapa vs real EC), BUKAN dari harga target seperti
+//    versi sebelumnya. Kalau salah satu atau dua-duanya belum diisi,
+//    hasilnya null (belum bisa dihitung), bukan 0.
 // ============================================================
 
 export const nv = v => parseFloat(v) || 0
@@ -24,11 +22,19 @@ export const rp = v => 'Rp ' + Math.round(v).toLocaleString('id-ID')
 export const gr = v => Math.round(v).toLocaleString('id-ID') + ' g'
 export const pc = v => (+v).toFixed(1) + '%'
 
+function calcJalur(hpp, margin, real) {
+  const target = margin < 100 ? hpp / (1 - margin / 100) : hpp
+  const marginReal = real > 0 ? ((real - hpp) / real) * 100 : null
+  const untungReal = real > 0 ? real - hpp : null
+  return { margin, target, real, marginReal, untungReal }
+}
+
 /**
  * @param {{total_kg,harga_ikan,biaya_bumbu}} base
  * @param {Array} vars - {ukuran_target,jumlah_pack,kelebihan,packaging,label,lainnya,
- *                         margin_ec,margin_mis,harga_real,
- *                         margin_kongsiapa,harga_real_kongsiapa}
+ *                         margin_kongsiapa,harga_real_kongsiapa,
+ *                         margin_mis,harga_real_mis,
+ *                         margin_ec,harga_real}
  */
 export function calcHpp(base, vars) {
   const kg = nv(base.total_kg)
@@ -47,44 +53,22 @@ export function calcHpp(base, vars) {
     const hK = nv(v.packaging) + nv(v.label) + nv(v.lainnya)
     const hpp = hI + hK
 
-    // EC dan MIS: rumus lama, tidak berubah
-    const mec = nv(v.margin_ec)
-    const mmis = nv(v.margin_mis)
-    const ec = mec < 100 ? hpp / (1 - mec / 100) : hpp
-    const ms = mmis < 100 ? hpp / (1 - mmis / 100) : hpp
+    const kongsiapa = calcJalur(hpp, nv(v.margin_kongsiapa), nv(v.harga_real_kongsiapa))
+    const reseller = calcJalur(hpp, nv(v.margin_mis), nv(v.harga_real_mis))
+    const ec = calcJalur(hpp, nv(v.margin_ec), nv(v.harga_real))
 
-    const real = nv(v.harga_real)
-    const mR = real > 0 ? ((real - hpp) / real) * 100 : null
+    // untung total batch, per jalur (butuh ju, dihitung di luar calcJalur
+    // biar calcJalur tetap murni per-pack)
+    ;[kongsiapa, reseller, ec].forEach(j => {
+      j.untungRealTotal = j.untungReal !== null ? j.untungReal * ju : null
+    })
 
-    const uec = ec - hpp
-    const ums = ms - hpp
+    // Margin real Kongsiapa -> EC: dari DUA HARGA REAL, bukan HPP.
+    const rK = nv(v.harga_real_kongsiapa)
+    const rE = nv(v.harga_real)
+    const marginKongsiapaKeEcReal = (rK > 0 && rE > 0) ? ((rE - rK) / rE) * 100 : null
 
-    // ---------- KONGSIAPA (baru) ----------
-    const mkongsiapa = nv(v.margin_kongsiapa)
-    const hargaKongsiapa = mkongsiapa < 100 ? hpp / (1 - mkongsiapa / 100) : hpp
-    const ukongsiapa = hargaKongsiapa - hpp
-    const ukongsiapaTotal = ukongsiapa * ju
-
-    // Margin Kongsiapa -> EC: informasi saja, bukan input. Selisih EC
-    // dan Harga Kongsiapa, dibagi EC. Kalau EC belum kehitung (0), null.
-    const marginKongsiapaKeEc = ec > 0 ? ((ec - hargaKongsiapa) / ec) * 100 : null
-
-    const realKongsiapa = nv(v.harga_real_kongsiapa)
-    const mRKongsiapa = realKongsiapa > 0 ? ((realKongsiapa - hpp) / realKongsiapa) * 100 : null
-    const uRKongsiapa = realKongsiapa > 0 ? realKongsiapa - hpp : null
-    const uRKongsiapaTotal = realKongsiapa > 0 ? (realKongsiapa - hpp) * ju : null
-
-    return {
-      ef, ju, hI, hK, hpp, ec, ms,
-      uec, uect: uec * ju,
-      ums, umst: ums * ju,
-      uR: real > 0 ? real - hpp : null,
-      uRt: real > 0 ? (real - hpp) * ju : null,
-      mR,
-      // kongsiapa
-      hargaKongsiapa, ukongsiapa, ukongsiapaTotal, marginKongsiapaKeEc,
-      mRKongsiapa, uRKongsiapa, uRKongsiapaTotal,
-    }
+    return { ef, ju, hI, hK, hpp, jalur: { kongsiapa, reseller, ec }, marginKongsiapaKeEcReal }
   })
 
   return { mo, tg, yr, C }

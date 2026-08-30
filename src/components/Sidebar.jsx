@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
+import { NavLink } from 'react-router-dom'
 
 const MODULES = [
-  { id: 'konten', label: 'Konten', desc: 'Threads · Instagram · TikTok', icon: '📝' },
-  { id: 'hpp', label: 'HPP', desc: 'Kalkulator batch & harga jual', icon: '🧮' },
-  { id: 'komponen', label: 'Komponen HPP', desc: 'Master kemasan & harga', icon: '📦' },
+  { path: '/konten', label: 'Konten', desc: 'Threads · Instagram · TikTok', icon: '📝' },
+  { path: '/hpp', label: 'HPP', desc: 'Kalkulator batch & harga jual', icon: '🧮' },
+  { path: '/komponen', label: 'Komponen HPP', desc: 'Master kemasan & harga', icon: '📦' },
 ]
 
-export default function Sidebar({ open, onClose, active, onSelect }) {
+export default function Sidebar({ open, onClose }) {
   useEffect(() => {
     if (!open) return
     const h = e => { if (e.key === 'Escape') onClose() }
@@ -28,17 +29,18 @@ export default function Sidebar({ open, onClose, active, onSelect }) {
 
         <nav className="sb-nav">
           {MODULES.map(m => (
-            <button
-              key={m.id}
-              className={`sb-item ${active === m.id ? 'on' : ''}`}
-              onClick={() => { onSelect(m.id); onClose() }}
+            <NavLink
+              key={m.path}
+              to={m.path}
+              onClick={onClose}
+              className={({ isActive }) => `sb-item ${isActive ? 'on' : ''}`}
             >
               <span className="sb-ico">{m.icon}</span>
               <span className="sb-txt">
                 <span className="sb-lbl">{m.label}</span>
                 <span className="sb-desc">{m.desc}</span>
               </span>
-            </button>
+            </NavLink>
           ))}
         </nav>
 

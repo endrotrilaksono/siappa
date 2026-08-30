@@ -1,21 +1,29 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { getHppBatches, createHppBatch, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
 
 const emptyVar = () => ({
   ukuran_target: '', jumlah_pack: '', kelebihan: '',
   packaging: '', label: '', lainnya: '',
-  margin_ec: '25', margin_mis: '15', harga_real: '',
   margin_kongsiapa: '20', harga_real_kongsiapa: '',
+  margin_mis: '15', harga_real_mis: '',
+  margin_ec: '25', harga_real: '',
 })
+
+// Urutan hirarki tetap: Kongsiapa -> Reseller -> End Customer
+const JALUR = [
+  { key: 'kongsiapa', label: 'Kongsiapa', sub: '(mudharabah)', marginField: 'margin_kongsiapa', realField: 'harga_real_kongsiapa', cls: 'k' },
+  { key: 'reseller', label: 'Reseller', sub: '', marginField: 'margin_mis', realField: 'harga_real_mis', cls: '' },
+  { key: 'ec', label: 'End Customer', sub: '', marginField: 'margin_ec', realField: 'harga_real', cls: 'g' },
+]
 
 const fdt = ts => {
   const d = new Date(ts)
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' }) +
     ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 }
+const fdtShort = ts => new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 
-// dropdown kecil untuk pilih komponen tersimpan, mengisi angka ke field target
 function ComponentPicker({ components, onPick }) {
   if (!components.length) return null
   return (
@@ -31,6 +39,29 @@ function ComponentPicker({ components, onPick }) {
       ))}
     </select>
   )
+}
+
+// Cari harga real terakhir untuk kombinasi nama produk + ukuran target,
+// dari riwayat batch yang sudah ada (client-side, tidak query baru ke
+// server). Dicari per jalur (kongsiapa/reseller/ec) secara terpisah,
+// karena bisa saja salah satu jalur pernah diisi tapi jalur lain belum.
+function findHargaTerakhir(hist, namaProduk, ukuranTarget, realField) {
+  if (!namaProduk || !ukuranTarget) return null
+  const namaN = namaProduk.trim().toLowerCase()
+  const ukN = nv(ukuranTarget)
+  let best = null
+  for (const b of hist) {
+    if ((b.nama_produk || '').trim().toLowerCase() !== namaN) continue
+    for (const v of (b.hpp_variants || [])) {
+      if (nv(v.ukuran_target) !== ukN) continue
+      const harga = nv(v[realField])
+      if (harga <= 0) continue
+      if (!best || new Date(b.created_at) > new Date(best.created_at)) {
+        best = { harga, created_at: b.created_at }
+      }
+    }
+  }
+  return best
 }
 
 export default function HppModule() {
@@ -59,6 +90,13 @@ export default function HppModule() {
   }, [])
   useEffect(() => { load() }, [load])
 
+  // daftar nama produk unik dari riwayat, buat dropdown/datalist
+  const namaProdukList = useMemo(() => {
+    const set = new Set()
+    hist.forEach(b => { if (b.nama_produk) set.add(b.nama_produk) })
+    return [...set].sort()
+  }, [hist])
+
   const setB = (k, v) => setBase(b => ({ ...b, [k]: v }))
   const setV = (i, k, v) => setVars(vs => vs.map((x, idx) => idx === i ? { ...x, [k]: v } : x))
   const addVar = () => setVars(vs => [...vs, emptyVar()])
@@ -74,8 +112,9 @@ export default function HppModule() {
       }, vars.map(v => ({
         ukuran_target: nv(v.ukuran_target), jumlah_pack: nv(v.jumlah_pack), kelebihan: nv(v.kelebihan),
         packaging: nv(v.packaging), label: nv(v.label), lainnya: nv(v.lainnya),
-        margin_ec: nv(v.margin_ec), margin_mis: nv(v.margin_mis), harga_real: nv(v.harga_real),
         margin_kongsiapa: nv(v.margin_kongsiapa), harga_real_kongsiapa: nv(v.harga_real_kongsiapa),
+        margin_mis: nv(v.margin_mis), harga_real_mis: nv(v.harga_real_mis),
+        margin_ec: nv(v.margin_ec), harga_real: nv(v.harga_real),
       })))
       flash('✓ Batch tersimpan')
       load()
@@ -97,8 +136,9 @@ export default function HppModule() {
     setVars((b.hpp_variants || []).length ? b.hpp_variants.map(v => ({
       ukuran_target: v.ukuran_target ?? '', jumlah_pack: v.jumlah_pack ?? '', kelebihan: v.kelebihan ?? '',
       packaging: v.packaging ?? '', label: v.label ?? '', lainnya: v.lainnya ?? '',
-      margin_ec: v.margin_ec ?? '25', margin_mis: v.margin_mis ?? '15', harga_real: v.harga_real ?? '',
       margin_kongsiapa: v.margin_kongsiapa ?? '20', harga_real_kongsiapa: v.harga_real_kongsiapa ?? '',
+      margin_mis: v.margin_mis ?? '15', harga_real_mis: v.harga_real_mis ?? '',
+      margin_ec: v.margin_ec ?? '25', harga_real: v.harga_real ?? '',
     })) : [emptyVar()])
     window.scrollTo({ top: 0, behavior: 'smooth' })
     flash('Data batch dimuat ke form')
@@ -121,7 +161,6 @@ export default function HppModule() {
   function exportCSV() {
     if (!R.mo && !R.tg) { flash('Tidak ada data.'); return }
     const q = s => `"${String(s ?? '')}"`
-    const vrow = (lbl, fn) => `${q(lbl)},${vars.map(fn).join(',')}`
     const lines = [
       q('HPP Batch Kalkulator — Ibu Siapa'),
       `${q('Export')},${q(new Date().toLocaleString('id-ID'))}`, '',
@@ -132,44 +171,43 @@ export default function HppModule() {
       `${q('Biaya Bumbu /kg')},${q(base.biaya_bumbu)}`,
       `${q('Total Modal')},${q(Math.round(R.mo))}`, '',
       `"",${vars.map((_, i) => q('Varian ' + (i + 1))).join(',')}`,
-      vrow('Ukuran Efektif (g)', v => nv(v.ukuran_target) + nv(v.kelebihan)),
-      vrow('Jumlah Pack', v => nv(v.jumlah_pack)),
-      `${q('Total Gram')},${q(Math.round(R.tg))}`,
-      `${q('Yield Rate (%)')},${q(R.yr.toFixed(1))}`, '',
-      q('KALKULASI HPP'),
       `${q('HPP Total /pack')},${R.C.map(c => Math.round(c.hpp)).join(',')}`, '',
-      q('END CUSTOMER'),
-      `${q('Harga Jual EC')},${R.C.map(c => Math.round(c.ec)).join(',')}`,
-      `${q('Untung /pack')},${R.C.map(c => Math.round(c.uec)).join(',')}`, '',
-      q('MIS / RESELLER'),
-      `${q('Harga Jual MIS')},${R.C.map(c => Math.round(c.ms)).join(',')}`,
-      `${q('Untung /pack')},${R.C.map(c => Math.round(c.ums)).join(',')}`, '',
-      q('KONGSIAPA'),
-      `${q('Harga Jual Kongsiapa')},${R.C.map(c => Math.round(c.hargaKongsiapa)).join(',')}`,
-      `${q('Untung /pack')},${R.C.map(c => Math.round(c.ukongsiapa)).join(',')}`,
-      `${q('Margin Kongsiapa -> EC (info)')},${R.C.map(c => c.marginKongsiapaKeEc !== null ? c.marginKongsiapaKeEc.toFixed(1) : '').join(',')}`,
     ]
+    JALUR.forEach(j => {
+      lines.push(q(('Harga ke ' + j.label).toUpperCase()))
+      lines.push(`${q('Harga real')},${R.C.map(c => c.jalur[j.key].real > 0 ? Math.round(c.jalur[j.key].real) : '').join(',')}`)
+      lines.push(`${q('Margin real (%)')},${R.C.map(c => c.jalur[j.key].marginReal !== null ? c.jalur[j.key].marginReal.toFixed(1) : '').join(',')}`)
+      lines.push(`${q('Untung /pack')},${R.C.map(c => c.jalur[j.key].untungReal !== null ? Math.round(c.jalur[j.key].untungReal) : '').join(',')}`)
+      lines.push(`${q('Untung total batch')},${R.C.map(c => c.jalur[j.key].untungRealTotal !== null ? Math.round(c.jalur[j.key].untungRealTotal) : '').join(',')}`)
+      lines.push('')
+    })
+    lines.push(q('Margin real Kongsiapa -> End Customer (info)'))
+    lines.push(`${q('')},${R.C.map(c => c.marginKongsiapaKeEcReal !== null ? c.marginKongsiapaKeEcReal.toFixed(1) + '%' : '').join(',')}`)
+
     const a = document.createElement('a')
     a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(lines.join('\n'))
     a.download = `HPP_${base.nama_produk || 'batch'}_${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
   }
 
-  const hasRealEc = vars.some(v => nv(v.harga_real) > 0)
-  const hasRealKongsiapa = vars.some(v => nv(v.harga_real_kongsiapa) > 0)
   const ready = R.mo > 0 && R.tg > 0
+  const anyRealFilled = R.C.some(c => JALUR.some(j => c.jalur[j.key].real > 0))
 
   return (
     <div className="hpp">
       {toast && <div className="hpp-toast">{toast}</div>}
 
+      {/* ---- BAHAN BAKU ---- */}
       <div className="card">
         <div className="card-head-h">Bahan Baku</div>
         <div className="hpp-grid2">
           <div className="fld">
             <label>Nama produk</label>
-            <input type="text" placeholder="mis: Nila Bersih"
+            <input type="text" list="nama-produk-list" placeholder="mis: Nila Bersih"
               value={base.nama_produk} onChange={e => setB('nama_produk', e.target.value)} />
+            <datalist id="nama-produk-list">
+              {namaProdukList.map(n => <option key={n} value={n} />)}
+            </datalist>
           </div>
           <div className="fld">
             <label>Total ikan diproses (kg)</label>
@@ -193,11 +231,13 @@ export default function HppModule() {
         </div>
       </div>
 
+      {/* ---- VARIAN ---- */}
       <div className="card">
         <div className="card-head-h">Varian Produksi</div>
         <div className="var-wrap">
           {vars.map((v, i) => {
             const ef = nv(v.ukuran_target) + nv(v.kelebihan)
+            const c = R.C[i]
             return (
               <div className="var-card" key={i}>
                 <div className="var-top">
@@ -231,20 +271,34 @@ export default function HppModule() {
                   <ComponentPicker components={components} onPick={val => setV(i, 'lainnya', val)} />
                 </div>
 
-                <div className="var-sec">Target margin (%)</div>
-                <div className="fld-sm"><label>End customer</label>
-                  <input type="number" min="0" max="100" value={v.margin_ec} onChange={e => setV(i, 'margin_ec', e.target.value)} /></div>
-                <div className="fld-sm"><label>MIS / Reseller</label>
-                  <input type="number" min="0" max="100" value={v.margin_mis} onChange={e => setV(i, 'margin_mis', e.target.value)} /></div>
-                <div className="fld-sm kongsiapa-fld"><label>Ke Kongsiapa</label>
-                  <input type="number" min="0" max="100" value={v.margin_kongsiapa} onChange={e => setV(i, 'margin_kongsiapa', e.target.value)} />
-                  <span className="fld-hint">EC tidak ikut berubah dari ini</span></div>
-
-                <div className="var-sec">Harga jual real (opsional)</div>
-                <div className="fld-sm real"><label>Real ke End Customer</label>
-                  <input type="number" placeholder="cek margin aktual EC" value={v.harga_real} onChange={e => setV(i, 'harga_real', e.target.value)} /></div>
-                <div className="fld-sm real"><label>Real ke Kongsiapa</label>
-                  <input type="number" placeholder="cek margin aktual Kongsiapa" value={v.harga_real_kongsiapa} onChange={e => setV(i, 'harga_real_kongsiapa', e.target.value)} /></div>
+                {/* ---- PER JALUR: margin -> pratinjau target -> harga real -> harga terakhir ---- */}
+                {JALUR.map(j => {
+                  const last = findHargaTerakhir(hist, base.nama_produk, v.ukuran_target, j.realField)
+                  const jc = c ? c.jalur[j.key] : null
+                  return (
+                    <div className={`jalur-blok ${j.cls}`} key={j.key}>
+                      <div className="var-sec jalur-sec">Harga ke {j.label} {j.sub && <span className="jalur-sub">{j.sub}</span>}</div>
+                      <div className="fld-sm">
+                        <label>Margin target (%)</label>
+                        <input type="number" min="0" max="100" value={v[j.marginField]}
+                          onChange={e => setV(i, j.marginField, e.target.value)} />
+                      </div>
+                      {jc && jc.target > 0 && (
+                        <div className="target-preview">Harga target: <b>{rp(jc.target)}</b></div>
+                      )}
+                      <div className="fld-sm real">
+                        <label>Harga real</label>
+                        <input type="number" placeholder="0" value={v[j.realField]}
+                          onChange={e => setV(i, j.realField, e.target.value)} />
+                      </div>
+                      {last && (
+                        <div className="harga-terakhir">
+                          Harga terakhir: <b>{rp(last.harga)}</b> ({fdtShort(last.created_at)})
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
@@ -252,10 +306,21 @@ export default function HppModule() {
         <button className="btn-ghost-dark" onClick={addVar}>+ Tambah Varian</button>
       </div>
 
+      {/* ---- OUTPUT: cuma dari harga real, dikelompokkan per jalur ---- */}
       <div className="card">
         <div className="card-head-h">Hasil Kalkulasi HPP</div>
         {!ready ? (
           <div className="empty">Isi data bahan baku dan minimal satu varian untuk melihat hasil.</div>
+        ) : !anyRealFilled ? (
+          <div className="empty">
+            HPP per pack sudah kehitung, tapi belum ada harga real yang diisi.<br />
+            Isi minimal satu harga real di salah satu jalur untuk melihat untung.
+            <div className="hpp-preview-hpp">
+              {vars.map((v, i) => (
+                <span key={i}>Varian {i + 1}: <b>{rp(R.C[i].hpp)}</b></span>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="out-wrap">
             <table className="out-tbl">
@@ -269,42 +334,52 @@ export default function HppModule() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td>HPP ikan+bumbu / pack</td>{R.C.map((c, i) => <td key={i}>{rp(c.hI)}</td>)}</tr>
-                <tr><td>HPP kemasan / pack</td>{R.C.map((c, i) => <td key={i}>{rp(c.hK)}</td>)}</tr>
                 <tr className="tot"><td>HPP TOTAL / pack</td>{R.C.map((c, i) => <td key={i} className="a">{rp(c.hpp)}</td>)}</tr>
 
-                <tr className="sec"><td colSpan={vars.length + 1}>End Customer</td></tr>
-                <tr className="tot"><td>Harga jual EC</td>{R.C.map((c, i) => <td key={i} className="g">{rp(c.ec)}</td>)}</tr>
-                <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i} className="g">{rp(c.uec)}</td>)}</tr>
-                <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i} className="g">{rp(c.uect)}</td>)}</tr>
-
-                <tr className="sec"><td colSpan={vars.length + 1}>MIS / Reseller</td></tr>
-                <tr className="tot"><td>Harga jual MIS/Reseller</td>{R.C.map((c, i) => <td key={i}>{rp(c.ms)}</td>)}</tr>
-                <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i}>{rp(c.ums)}</td>)}</tr>
-                <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i}>{rp(c.umst)}</td>)}</tr>
-
-                <tr className="sec kongsiapa"><td colSpan={vars.length + 1}>Kongsiapa (mudharabah)</td></tr>
-                <tr className="tot"><td>Harga jual Kongsiapa</td>{R.C.map((c, i) => <td key={i} className="k">{rp(c.hargaKongsiapa)}</td>)}</tr>
-                <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i} className="k">{rp(c.ukongsiapa)}</td>)}</tr>
-                <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i} className="k">{rp(c.ukongsiapaTotal)}</td>)}</tr>
-                <tr className="info-row"><td>Margin Kongsiapa → EC <span className="info-tag">info</span></td>
-                  {R.C.map((c, i) => <td key={i} className="muted">{c.marginKongsiapaKeEc !== null ? pc(c.marginKongsiapaKeEc) : '—'}</td>)}</tr>
-
-                {hasRealEc && <>
-                  <tr className="sec"><td colSpan={vars.length + 1}>Harga Real — End Customer</td></tr>
-                  <tr className="tot"><td>Harga real EC</td>{vars.map((v, i) => <td key={i}>{nv(v.harga_real) > 0 ? rp(nv(v.harga_real)) : '—'}</td>)}</tr>
-                  <tr><td>Margin real EC</td>{R.C.map((c, i) => <td key={i} className={c.mR !== null ? marginClass(c.mR) : ''}>{c.mR !== null ? pc(c.mR) : '—'}</td>)}</tr>
-                  <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i} className={c.uR !== null ? (c.uR > 0 ? 'g' : 'r') : ''}>{c.uR !== null ? rp(c.uR) : '—'}</td>)}</tr>
-                  <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i} className={c.uRt !== null ? (c.uRt > 0 ? 'g' : 'r') : ''}>{c.uRt !== null ? rp(c.uRt) : '—'}</td>)}</tr>
-                </>}
-
-                {hasRealKongsiapa && <>
-                  <tr className="sec kongsiapa"><td colSpan={vars.length + 1}>Harga Real — Kongsiapa</td></tr>
-                  <tr className="tot"><td>Harga real Kongsiapa</td>{vars.map((v, i) => <td key={i}>{nv(v.harga_real_kongsiapa) > 0 ? rp(nv(v.harga_real_kongsiapa)) : '—'}</td>)}</tr>
-                  <tr><td>Margin real Kongsiapa</td>{R.C.map((c, i) => <td key={i} className={c.mRKongsiapa !== null ? marginClass(c.mRKongsiapa) : ''}>{c.mRKongsiapa !== null ? pc(c.mRKongsiapa) : '—'}</td>)}</tr>
-                  <tr><td>Untung / pack</td>{R.C.map((c, i) => <td key={i} className={c.uRKongsiapa !== null ? (c.uRKongsiapa > 0 ? 'g' : 'r') : ''}>{c.uRKongsiapa !== null ? rp(c.uRKongsiapa) : '—'}</td>)}</tr>
-                  <tr className="tot"><td>Untung total batch</td>{R.C.map((c, i) => <td key={i} className={c.uRKongsiapaTotal !== null ? (c.uRKongsiapaTotal > 0 ? 'g' : 'r') : ''}>{c.uRKongsiapaTotal !== null ? rp(c.uRKongsiapaTotal) : '—'}</td>)}</tr>
-                </>}
+                {JALUR.map(j => {
+                  const anyFilled = R.C.some(c => c.jalur[j.key].real > 0)
+                  if (!anyFilled) return null
+                  return (
+                    <Fragment key={j.key}>
+                      <tr className={`sec ${j.cls === 'k' ? 'kongsiapa' : ''}`}>
+                        <td colSpan={vars.length + 1}>Harga ke {j.label} {j.sub}</td>
+                      </tr>
+                      <tr className="tot">
+                        <td>Harga real</td>
+                        {R.C.map((c, i) => <td key={i} className={j.cls}>{c.jalur[j.key].real > 0 ? rp(c.jalur[j.key].real) : '—'}</td>)}
+                      </tr>
+                      <tr>
+                        <td>Margin real</td>
+                        {R.C.map((c, i) => {
+                          const mr = c.jalur[j.key].marginReal
+                          return <td key={i} className={mr !== null ? marginClass(mr) : ''}>{mr !== null ? pc(mr) : '—'}</td>
+                        })}
+                      </tr>
+                      <tr>
+                        <td>Untung / pack</td>
+                        {R.C.map((c, i) => {
+                          const u = c.jalur[j.key].untungReal
+                          return <td key={i} className={u !== null ? (u > 0 ? 'g' : 'r') : ''}>{u !== null ? rp(u) : '—'}</td>
+                        })}
+                      </tr>
+                      <tr className="tot">
+                        <td>Untung total batch</td>
+                        {R.C.map((c, i) => {
+                          const u = c.jalur[j.key].untungRealTotal
+                          return <td key={i} className={u !== null ? (u > 0 ? 'g' : 'r') : ''}>{u !== null ? rp(u) : '—'}</td>
+                        })}
+                      </tr>
+                      {j.key === 'kongsiapa' && R.C.some(c => c.marginKongsiapaKeEcReal !== null) && (
+                        <tr className="info-row">
+                          <td>Margin real Kongsiapa → EC <span className="info-tag">info</span></td>
+                          {R.C.map((c, i) => (
+                            <td key={i} className="muted">{c.marginKongsiapaKeEcReal !== null ? pc(c.marginKongsiapaKeEcReal) : '—'}</td>
+                          ))}
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>
