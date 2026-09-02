@@ -175,14 +175,15 @@ export default function HppModule() {
     ]
     JALUR.forEach(j => {
       lines.push(q(('Harga ke ' + j.label).toUpperCase()))
-      lines.push(`${q('Harga real')},${R.C.map(c => c.jalur[j.key].real > 0 ? Math.round(c.jalur[j.key].real) : '').join(',')}`)
-      lines.push(`${q('Margin real (%)')},${R.C.map(c => c.jalur[j.key].marginReal !== null ? c.jalur[j.key].marginReal.toFixed(1) : '').join(',')}`)
+      lines.push(`${q('Harga')},${R.C.map(c => c.jalur[j.key].real > 0 ? Math.round(c.jalur[j.key].real) : '').join(',')}`)
+      lines.push(`${q('Margin (%)')},${R.C.map(c => c.jalur[j.key].marginReal !== null ? c.jalur[j.key].marginReal.toFixed(1) : '').join(',')}`)
       lines.push(`${q('Untung /pack')},${R.C.map(c => c.jalur[j.key].untungReal !== null ? Math.round(c.jalur[j.key].untungReal) : '').join(',')}`)
       lines.push(`${q('Untung total batch')},${R.C.map(c => c.jalur[j.key].untungRealTotal !== null ? Math.round(c.jalur[j.key].untungRealTotal) : '').join(',')}`)
       lines.push('')
     })
-    lines.push(q('Margin real Kongsiapa -> End Customer (info)'))
-    lines.push(`${q('')},${R.C.map(c => c.marginKongsiapaKeEcReal !== null ? c.marginKongsiapaKeEcReal.toFixed(1) + '%' : '').join(',')}`)
+    lines.push(q('Kongsiapa -> End Customer (info)'))
+    lines.push(`${q('Margin (%)')},${R.C.map(c => c.marginKongsiapaKeEcReal !== null ? c.marginKongsiapaKeEcReal.toFixed(1) : '').join(',')}`)
+    lines.push(`${q('Selisih harga (Rp)')},${R.C.map(c => c.selisihKongsiapaKeEcReal !== null ? Math.round(c.selisihKongsiapaKeEcReal) : '').join(',')}`)
 
     const a = document.createElement('a')
     a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(lines.join('\n'))
@@ -357,11 +358,11 @@ export default function HppModule() {
                         <td colSpan={vars.length + 1}>Harga ke {j.label} {j.sub}</td>
                       </tr>
                       <tr className="tot">
-                        <td>Harga real</td>
+                        <td>Harga</td>
                         {R.C.map((c, i) => <td key={i} className={j.cls}>{c.jalur[j.key].real > 0 ? rp(c.jalur[j.key].real) : '—'}</td>)}
                       </tr>
                       <tr>
-                        <td>Margin real</td>
+                        <td>Margin</td>
                         {R.C.map((c, i) => {
                           const mr = c.jalur[j.key].marginReal
                           return <td key={i} className={mr !== null ? marginClass(mr) : ''}>{mr !== null ? pc(mr) : '—'}</td>
@@ -382,12 +383,20 @@ export default function HppModule() {
                         })}
                       </tr>
                       {j.key === 'kongsiapa' && R.C.some(c => c.marginKongsiapaKeEcReal !== null) && (
-                        <tr className="info-row">
-                          <td>Margin real Kongsiapa → EC <span className="info-tag">info</span></td>
-                          {R.C.map((c, i) => (
-                            <td key={i} className="muted">{c.marginKongsiapaKeEcReal !== null ? pc(c.marginKongsiapaKeEcReal) : '—'}</td>
-                          ))}
-                        </tr>
+                        <>
+                          <tr className="info-row">
+                            <td>Margin Kongsiapa → EC <span className="info-tag">info</span></td>
+                            {R.C.map((c, i) => (
+                              <td key={i} className="muted">{c.marginKongsiapaKeEcReal !== null ? pc(c.marginKongsiapaKeEcReal) : '—'}</td>
+                            ))}
+                          </tr>
+                          <tr className="info-row">
+                            <td>Selisih harga Kongsiapa → EC <span className="info-tag">info</span></td>
+                            {R.C.map((c, i) => (
+                              <td key={i} className="muted">{c.selisihKongsiapaKeEcReal !== null ? rp(c.selisihKongsiapaKeEcReal) : '—'}</td>
+                            ))}
+                          </tr>
+                        </>
                       )}
                     </Fragment>
                   )

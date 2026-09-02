@@ -67,8 +67,9 @@ export function calcHpp(base, vars) {
     const rK = nv(v.harga_real_kongsiapa)
     const rE = nv(v.harga_real)
     const marginKongsiapaKeEcReal = (rK > 0 && rE > 0) ? ((rE - rK) / rE) * 100 : null
+    const selisihKongsiapaKeEcReal = (rK > 0 && rE > 0) ? (rE - rK) : null
 
-    return { ef, ju, hI, hK, hpp, jalur: { kongsiapa, reseller, ec }, marginKongsiapaKeEcReal }
+    return { ef, ju, hI, hK, hpp, jalur: { kongsiapa, reseller, ec }, marginKongsiapaKeEcReal, selisihKongsiapaKeEcReal }
   })
 
   return { mo, tg, yr, C }

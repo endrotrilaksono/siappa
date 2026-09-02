@@ -498,3 +498,30 @@ input[type="number"],
     overflow-y: auto;
   }
 }
+/* ============================================================
+   FULL WIDTH: lebar app dilepas dari batas 920px lama
+   ============================================================
+   Sebelumnya .shell dibatasi max-width:920px, ditengahkan.
+   Itu peninggalan waktu app masih 1 kolom sederhana. Sekarang,
+   khususnya modul HPP yang berisi tabel data lebar, batas itu
+   bikin kepepet. Dilebarkan jauh, tapi TETAP dikasih batas atas
+   (1600px) supaya di layar sangat ultra-lebar, teks tidak jadi
+   melebar aneh sampai baris kalimatnya kepanjangan dibaca mata.
+
+   Aturan ini SENGAJA ditaruh di akhir file (source order menang),
+   jadi menimpa .shell{max-width:920px} yang lama tanpa perlu
+   menyentuh/menghapus rule aslinya. */
+.shell{
+  max-width: 1600px;
+}
+
+/* Rasio grid HPP juga disesuaikan: kolom hasil (kanan) dikasih
+   porsi SEDIKIT LEBIH LEBAR dari kolom input (kiri), karena
+   tabel hasil punya banyak kolom (per varian), sementara input
+   cuma field-field yang ditumpuk vertikal, tidak butuh lebar
+   banyak. Ini MENIMPA rasio 1.1fr/0.9fr yang salah kemarin. */
+@media (min-width: 900px){
+  .hpp-layout{
+    grid-template-columns: 0.85fr 1.15fr;
+  }
+}
