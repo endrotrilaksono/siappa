@@ -473,3 +473,28 @@ input[type="number"],
   font-variant-numeric: tabular-nums;
   font-family: 'Merriweather', 'AngkaRata', Georgia, serif;
 }
+/* ============ v9d: layout 2 kolom, hasil sticky di kanan ============ */
+
+/* default: 1 kolom (HP/layar sempit), sama seperti sebelumnya */
+.hpp-layout{
+  display: block;
+}
+.hpp-col-left, .hpp-col-right{
+  display: block;
+}
+
+/* di layar lebar (tablet lanskap ke atas): 2 kolom, kanan sticky */
+@media (min-width: 900px){
+  .hpp-layout{
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 18px;
+    align-items: start;
+  }
+  .hpp-col-right{
+    position: sticky;
+    top: 78px; /* tinggi topbar (~66px) + jarak napas */
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+  }
+}

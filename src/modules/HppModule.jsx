@@ -197,6 +197,9 @@ export default function HppModule() {
     <div className="hpp">
       {toast && <div className="hpp-toast">{toast}</div>}
 
+      <div className="hpp-layout">
+      <div className="hpp-col-left">
+
       {/* ---- BAHAN BAKU ---- */}
       <div className="card">
         <div className="card-head-h">Bahan Baku</div>
@@ -311,6 +314,10 @@ export default function HppModule() {
         <button className="btn-ghost-dark" onClick={addVar}>+ Tambah Varian</button>
       </div>
 
+      </div>{/* /.hpp-col-left */}
+
+      <div className="hpp-col-right">
+
       {/* ---- OUTPUT: cuma dari harga real, dikelompokkan per jalur ---- */}
       <div className="card">
         <div className="card-head-h">Hasil Kalkulasi HPP</div>
@@ -397,6 +404,9 @@ export default function HppModule() {
         </button>
         <button className="btn-ghost-dark" onClick={exportCSV}>↓ Export CSV</button>
       </div>
+
+      </div>{/* /.hpp-col-right */}
+      </div>{/* /.hpp-layout */}
 
       <div className="hist-head">
         <h3>Riwayat Batch</h3>
