@@ -2,9 +2,9 @@ import { useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 
 const MODULES = [
-  { path: '/konten', label: 'Konten', desc: 'Threads · Instagram · TikTok', icon: '📝' },
   { path: '/hpp', label: 'HPP', desc: 'Kalkulator batch & harga jual', icon: '🧮' },
   { path: '/komponen', label: 'Komponen HPP', desc: 'Master kemasan & harga', icon: '📦' },
+  { path: '/harga', label: 'Daftar Harga', desc: 'Harga terbaru tiap produk', icon: '💰' },
 ]
 
 export default function Sidebar({ open, onClose }) {

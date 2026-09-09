@@ -1,13 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import Sidebar from './components/Sidebar'
-import KontenModule from './modules/KontenModule'
 import HppModule from './modules/HppModule'
 import KomponenHppModule from './modules/KomponenHppModule'
+import DaftarHargaModule from './modules/DaftarHargaModule'
 import AuthGate from './components/AuthGate'
 import { hasCredentials } from './lib/supabase'
 
-const TITLES = { '/konten': 'Konten', '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP' }
+const TITLES = { '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP', '/harga': 'Daftar Harga' }
 
 function Shell({ signOut }) {
   const [sbOpen, setSbOpen] = useState(false)
@@ -40,10 +40,13 @@ function Shell({ signOut }) {
         )}
         <Routes>
           <Route path="/" element={<Navigate to="/hpp" replace />} />
-          <Route path="/konten" element={<KontenModule />} />
           <Route path="/hpp" element={<div className="body"><HppModule /></div>} />
           <Route path="/komponen" element={<div className="body"><KomponenHppModule /></div>} />
-          {/* fallback: path tak dikenal balik ke HPP, bukan halaman putih */}
+          <Route path="/harga" element={<div className="body"><DaftarHargaModule /></div>} />
+          {/* tab Konten sengaja dilepas dari navigasi. Datanya TETAP AMAN
+              di Supabase (tabel contents/content_parts tidak disentuh),
+              cuma pintu masuknya di app yang dicabut. Gampang dipasang
+              lagi kalau suatu saat dibutuhkan lagi. */}
           <Route path="*" element={<Navigate to="/hpp" replace />} />
         </Routes>
       </main>
