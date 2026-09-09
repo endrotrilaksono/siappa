@@ -8,13 +8,15 @@ const emptyVar = () => ({
   packaging: '', label: '', lainnya: '',
   margin_kongsiapa: '20', harga_real_kongsiapa: '',
   margin_mis: '15', harga_real_mis: '',
+  margin_konsinyasi: '18', harga_real_konsinyasi: '',
   margin_ec: '25', harga_real: '',
 })
 
-// Urutan hirarki tetap: Kongsiapa -> Reseller -> End Customer
+// Urutan hirarki tetap: Kongsiapa -> Reseller -> Konsinyasi -> End Customer
 const JALUR = [
   { key: 'kongsiapa', label: 'Kongsiapa', sub: '(mudharabah)', marginField: 'margin_kongsiapa', realField: 'harga_real_kongsiapa', cls: 'k' },
   { key: 'reseller', label: 'Reseller', sub: '', marginField: 'margin_mis', realField: 'harga_real_mis', cls: '' },
+  { key: 'konsinyasi', label: 'Konsinyasi', sub: '', marginField: 'margin_konsinyasi', realField: 'harga_real_konsinyasi', cls: 'o' },
   { key: 'ec', label: 'End Customer', sub: '', marginField: 'margin_ec', realField: 'harga_real', cls: 'g' },
 ]
 
@@ -132,6 +134,7 @@ export default function HppModule() {
         packaging: nv(v.packaging), label: nv(v.label), lainnya: nv(v.lainnya),
         margin_kongsiapa: nv(v.margin_kongsiapa), harga_real_kongsiapa: nv(v.harga_real_kongsiapa),
         margin_mis: nv(v.margin_mis), harga_real_mis: nv(v.harga_real_mis),
+        margin_konsinyasi: nv(v.margin_konsinyasi), harga_real_konsinyasi: nv(v.harga_real_konsinyasi),
         margin_ec: nv(v.margin_ec), harga_real: nv(v.harga_real),
       })))
       flash('✓ Batch tersimpan')
@@ -156,6 +159,7 @@ export default function HppModule() {
       packaging: v.packaging ?? '', label: v.label ?? '', lainnya: v.lainnya ?? '',
       margin_kongsiapa: v.margin_kongsiapa ?? '20', harga_real_kongsiapa: v.harga_real_kongsiapa ?? '',
       margin_mis: v.margin_mis ?? '15', harga_real_mis: v.harga_real_mis ?? '',
+      margin_konsinyasi: v.margin_konsinyasi ?? '18', harga_real_konsinyasi: v.harga_real_konsinyasi ?? '',
       margin_ec: v.margin_ec ?? '25', harga_real: v.harga_real ?? '',
     })) : [emptyVar()])
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -372,7 +376,7 @@ export default function HppModule() {
                   if (!anyFilled) return null
                   return (
                     <Fragment key={j.key}>
-                      <tr className={`sec ${j.cls === 'k' ? 'kongsiapa' : ''}`}>
+                      <tr className={`sec ${j.key}`}>
                         <td colSpan={vars.length + 1}>Harga ke {j.label} {j.sub}</td>
                       </tr>
                       <tr className="tot">

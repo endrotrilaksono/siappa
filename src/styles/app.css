@@ -558,3 +558,9 @@ input[type="number"],
   font-size:13px;background:var(--paper);font-family:inherit}
 .bulk-margin-row input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;
   font-size:13px;background:var(--paper);font-family:inherit;text-align:right}
+
+/* ============ Konsinyasi (jalur ke-4) ============ */
+.o{color:#c2703c}
+.jalur-blok.o .jalur-sec{color:#c2703c}
+.out-tbl tr.sec.konsinyasi td{background:#fdefe4;color:#c2703c}
+.harga-chip.o{background:#fdefe4;border-color:#f0cba3;color:#c2703c}

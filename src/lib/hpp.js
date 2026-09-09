@@ -55,11 +55,12 @@ export function calcHpp(base, vars) {
 
     const kongsiapa = calcJalur(hpp, nv(v.margin_kongsiapa), nv(v.harga_real_kongsiapa))
     const reseller = calcJalur(hpp, nv(v.margin_mis), nv(v.harga_real_mis))
+    const konsinyasi = calcJalur(hpp, nv(v.margin_konsinyasi), nv(v.harga_real_konsinyasi))
     const ec = calcJalur(hpp, nv(v.margin_ec), nv(v.harga_real))
 
     // untung total batch, per jalur (butuh ju, dihitung di luar calcJalur
     // biar calcJalur tetap murni per-pack)
-    ;[kongsiapa, reseller, ec].forEach(j => {
+    ;[kongsiapa, reseller, konsinyasi, ec].forEach(j => {
       j.untungRealTotal = j.untungReal !== null ? j.untungReal * ju : null
     })
 
@@ -69,7 +70,7 @@ export function calcHpp(base, vars) {
     const marginKongsiapaKeEcReal = (rK > 0 && rE > 0) ? ((rE - rK) / rE) * 100 : null
     const selisihKongsiapaKeEcReal = (rK > 0 && rE > 0) ? (rE - rK) : null
 
-    return { ef, ju, hI, hK, hpp, jalur: { kongsiapa, reseller, ec }, marginKongsiapaKeEcReal, selisihKongsiapaKeEcReal }
+    return { ef, ju, hI, hK, hpp, jalur: { kongsiapa, reseller, konsinyasi, ec }, marginKongsiapaKeEcReal, selisihKongsiapaKeEcReal }
   })
 
   return { mo, tg, yr, C }

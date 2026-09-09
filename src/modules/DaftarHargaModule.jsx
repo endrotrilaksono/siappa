@@ -13,6 +13,7 @@ const fdt = ts => {
 const JALUR_MARGIN = [
   { key: 'margin_kongsiapa', label: 'Kongsiapa' },
   { key: 'margin_mis', label: 'Reseller' },
+  { key: 'margin_konsinyasi', label: 'Konsinyasi' },
   { key: 'margin_ec', label: 'End Customer' },
 ]
 
