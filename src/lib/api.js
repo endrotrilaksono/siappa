@@ -139,6 +139,47 @@ export async function createHppBatch(batch, variants) {
   return b
 }
 
+// Dipakai saat MENGEDIT batch yang sudah ada (bukan bikin baru). Data
+// batch ditimpa, dan semua variannya diganti total (hapus varian lama,
+// masukkan varian baru) supaya tidak ada varian sisa yang nyangkut
+// kalau user mengurangi jumlah varian saat edit.
+export async function updateHppBatchWithVariants(id, batch, variants) {
+  const { error } = await supabase
+    .from('hpp_batches')
+    .update({ ...batch, created_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+
+  await supabase.from('hpp_variants').delete().eq('batch_id', id)
+  if (variants && variants.length) {
+    const rows = variants.map((v, i) => ({ ...v, batch_id: id, urutan: i + 1 }))
+    const { error: ve } = await supabase.from('hpp_variants').insert(rows)
+    if (ve) throw ve
+  }
+  return true
+}
+
+// Dipakai dobel klik chip di Daftar Harga: update margin+harga real
+// SATU jalur SATU varian saja, tanpa menyentuh varian/jalur lain.
+export async function updateHppVariant(variantId, patch) {
+  const { data, error } = await supabase
+    .from('hpp_variants')
+    .update(patch)
+    .eq('id', variantId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+// Hapus SATU varian saja (satu ukuran/pack), bukan seluruh batch/produk.
+// Dipakai di Daftar Harga yang sekarang tampil per baris per varian.
+export async function deleteHppVariant(variantId) {
+  const { error } = await supabase.from('hpp_variants').delete().eq('id', variantId)
+  if (error) throw error
+  return true
+}
+
 export async function deleteHppBatch(id) {
   const { error } = await supabase.from('hpp_batches').delete().eq('id', id)
   if (error) throw error

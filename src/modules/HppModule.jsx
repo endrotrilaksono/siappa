@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getHppBatches, createHppBatch, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
+import { getHppBatches, createHppBatch, updateHppBatchWithVariants, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
 
 const emptyVar = () => ({
@@ -14,7 +14,7 @@ const emptyVar = () => ({
 
 // Urutan hirarki tetap: Kongsiapa -> Reseller -> Konsinyasi -> End Customer
 const JALUR = [
-  { key: 'kongsiapa', label: 'Kongsiapa', sub: '(mudharabah)', marginField: 'margin_kongsiapa', realField: 'harga_real_kongsiapa', cls: 'k' },
+  { key: 'kongsiapa', label: 'Kongsiapa', sub: '', marginField: 'margin_kongsiapa', realField: 'harga_real_kongsiapa', cls: 'k' },
   { key: 'reseller', label: 'Reseller', sub: '', marginField: 'margin_mis', realField: 'harga_real_mis', cls: '' },
   { key: 'konsinyasi', label: 'Konsinyasi', sub: '', marginField: 'margin_konsinyasi', realField: 'harga_real_konsinyasi', cls: 'o' },
   { key: 'ec', label: 'End Customer', sub: '', marginField: 'margin_ec', realField: 'harga_real', cls: 'g' },
@@ -80,6 +80,7 @@ export default function HppModule() {
   const [toast, setToast] = useState('')
   const [showImport, setShowImport] = useState(false)
   const [legacyText, setLegacyText] = useState('')
+  const [editingBatchId, setEditingBatchId] = useState(null)
 
   const R = calcHpp(base, vars)
 
@@ -126,21 +127,37 @@ export default function HppModule() {
     if (!R.mo || !R.tg) { flash('Isi dulu bahan baku dan minimal satu varian.'); return }
     setSaving(true)
     try {
-      await createHppBatch({
+      const batchPayload = {
         nama_produk: base.nama_produk || 'Tanpa nama',
         total_kg: nv(base.total_kg), harga_ikan: nv(base.harga_ikan), biaya_bumbu: nv(base.biaya_bumbu),
-      }, vars.map(v => ({
+      }
+      const variantsPayload = vars.map(v => ({
         ukuran_target: nv(v.ukuran_target), jumlah_pack: nv(v.jumlah_pack), kelebihan: nv(v.kelebihan),
         packaging: nv(v.packaging), label: nv(v.label), lainnya: nv(v.lainnya),
         margin_kongsiapa: nv(v.margin_kongsiapa), harga_real_kongsiapa: nv(v.harga_real_kongsiapa),
         margin_mis: nv(v.margin_mis), harga_real_mis: nv(v.harga_real_mis),
         margin_konsinyasi: nv(v.margin_konsinyasi), harga_real_konsinyasi: nv(v.harga_real_konsinyasi),
         margin_ec: nv(v.margin_ec), harga_real: nv(v.harga_real),
-      })))
-      flash('✓ Batch tersimpan')
+      }))
+
+      if (editingBatchId) {
+        // sedang edit batch yang sudah ada -> TIMPA, jangan bikin baru
+        await updateHppBatchWithVariants(editingBatchId, batchPayload, variantsPayload)
+        flash('✓ Perubahan disimpan (menimpa data lama)')
+      } else {
+        await createHppBatch(batchPayload, variantsPayload)
+        flash('✓ Batch baru tersimpan')
+      }
       load()
     } catch (e) { alert('Gagal menyimpan: ' + e.message) }
     finally { setSaving(false) }
+  }
+
+  function mulaiBaru() {
+    setEditingBatchId(null)
+    setBase({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
+    setVars([emptyVar(), emptyVar()])
+    flash('Form dikosongkan, siap hitung produk baru')
   }
 
   async function removeBatch(b) {
@@ -150,6 +167,7 @@ export default function HppModule() {
   }
 
   function loadBatch(b) {
+    setEditingBatchId(b.id)
     setBase({
       nama_produk: b.nama_produk || '',
       total_kg: b.total_kg ?? '', harga_ikan: b.harga_ikan ?? '', biaya_bumbu: b.biaya_bumbu ?? '0',
@@ -178,39 +196,6 @@ export default function HppModule() {
       flash(`✓ ${n} batch lama terimport`)
       setShowImport(false); setLegacyText(''); load()
     } catch (e) { alert('Gagal import: ' + e.message) }
-  }
-
-  function exportCSV() {
-    if (!R.mo && !R.tg) { flash('Tidak ada data.'); return }
-    const q = s => `"${String(s ?? '')}"`
-    const lines = [
-      q('HPP Batch Kalkulator — Ibu Siapa'),
-      `${q('Export')},${q(new Date().toLocaleString('id-ID'))}`, '',
-      q('BAHAN BAKU'),
-      `${q('Nama Produk')},${q(base.nama_produk)}`,
-      `${q('Total Ikan (kg)')},${q(base.total_kg)}`,
-      `${q('Harga Beli /kg')},${q(base.harga_ikan)}`,
-      `${q('Biaya Bumbu /kg')},${q(base.biaya_bumbu)}`,
-      `${q('Total Modal')},${q(Math.round(R.mo))}`, '',
-      `"",${vars.map((_, i) => q('Varian ' + (i + 1))).join(',')}`,
-      `${q('HPP Total /pack')},${R.C.map(c => Math.round(c.hpp)).join(',')}`, '',
-    ]
-    JALUR.forEach(j => {
-      lines.push(q(('Harga ke ' + j.label).toUpperCase()))
-      lines.push(`${q('Harga')},${R.C.map(c => c.jalur[j.key].real > 0 ? Math.round(c.jalur[j.key].real) : '').join(',')}`)
-      lines.push(`${q('Margin (%)')},${R.C.map(c => c.jalur[j.key].marginReal !== null ? c.jalur[j.key].marginReal.toFixed(1) : '').join(',')}`)
-      lines.push(`${q('Untung /pack')},${R.C.map(c => c.jalur[j.key].untungReal !== null ? Math.round(c.jalur[j.key].untungReal) : '').join(',')}`)
-      lines.push(`${q('Untung total batch')},${R.C.map(c => c.jalur[j.key].untungRealTotal !== null ? Math.round(c.jalur[j.key].untungRealTotal) : '').join(',')}`)
-      lines.push('')
-    })
-    lines.push(q('Kongsiapa -> End Customer (info)'))
-    lines.push(`${q('Margin (%)')},${R.C.map(c => c.marginKongsiapaKeEcReal !== null ? c.marginKongsiapaKeEcReal.toFixed(1) : '').join(',')}`)
-    lines.push(`${q('Selisih harga (Rp)')},${R.C.map(c => c.selisihKongsiapaKeEcReal !== null ? Math.round(c.selisihKongsiapaKeEcReal) : '').join(',')}`)
-
-    const a = document.createElement('a')
-    a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(lines.join('\n'))
-    a.download = `HPP_${base.nama_produk || 'batch'}_${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
   }
 
   const ready = R.mo > 0 && R.tg > 0
@@ -337,6 +322,19 @@ export default function HppModule() {
         <button className="btn-ghost-dark" onClick={addVar}>+ Tambah Varian</button>
       </div>
 
+      {editingBatchId && (
+        <div className="editing-banner">
+          Sedang mengedit produk yang sudah ada. Menyimpan akan menimpa data lama.
+          <button className="link-btn" onClick={mulaiBaru}>Batal, mulai baru</button>
+        </div>
+      )}
+
+      <div className="hpp-actions">
+        <button className="btn-primary" onClick={save} disabled={saving || !ready}>
+          {saving ? 'Menyimpan…' : 'Simpan'}
+        </button>
+      </div>
+
       </div>{/* /.hpp-col-left */}
 
       <div className="hpp-col-right">
@@ -427,13 +425,6 @@ export default function HppModule() {
             </table>
           </div>
         )}
-      </div>
-
-      <div className="hpp-actions">
-        <button className="btn-primary" onClick={save} disabled={saving || !ready}>
-          {saving ? 'Menyimpan…' : '💾 Simpan Batch'}
-        </button>
-        <button className="btn-ghost-dark" onClick={exportCSV}>↓ Export CSV</button>
       </div>
 
       </div>{/* /.hpp-col-right */}
