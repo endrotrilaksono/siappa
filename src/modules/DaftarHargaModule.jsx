@@ -1,60 +1,36 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { getHppBatches } from '../lib/api'
-import { calcHpp, rp, pc, nv, marginClass } from '../lib/hpp'
+import { useNavigate } from 'react-router-dom'
+import { getHppBatches, deleteHppBatch } from '../lib/api'
+import { supabase } from '../lib/supabase'
+import { calcHpp, rp, gr } from '../lib/hpp'
 
-const JALUR = [
-  { key: 'kongsiapa', label: 'Kongsiapa', cls: 'k' },
-  { key: 'reseller', label: 'Reseller', cls: '' },
-  { key: 'ec', label: 'End Customer', cls: 'g' },
-]
-
-const fdt = ts => new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-
-// Dari semua batch, ambil YANG PALING BARU untuk tiap kombinasi
-// nama produk + ukuran, per jalur (bisa beda batch sumbernya kalau
-// satu jalur pernah diisi belakangan sementara jalur lain lebih lama).
-// Hasilnya: satu baris solid per produk+ukuran, bukan log kejadian.
-function buildDaftarHarga(hist) {
-  const map = new Map()
-  for (const b of hist) {
-    for (const v of (b.hpp_variants || [])) {
-      const key = `${(b.nama_produk || '').trim().toLowerCase()}__${nv(v.ukuran_target)}`
-      if (!map.has(key)) {
-        map.set(key, {
-          nama_produk: b.nama_produk,
-          ukuran_target: v.ukuran_target,
-          perJalur: {}, // key jalur -> {harga, tanggal, batch, variant}
-          terakhirUpdate: null,
-          contohBatch: b, // dipakai buat breakdown HPP terbaru
-          contohVariant: v,
-        })
-      }
-      const row = map.get(key)
-      JALUR.forEach(j => {
-        const field = j.key === 'kongsiapa' ? 'harga_real_kongsiapa' : j.key === 'reseller' ? 'harga_real_mis' : 'harga_real'
-        const harga = nv(v[field])
-        if (harga <= 0) return
-        const existing = row.perJalur[j.key]
-        if (!existing || new Date(b.created_at) > new Date(existing.tanggal)) {
-          row.perJalur[j.key] = { harga, tanggal: b.created_at }
-        }
-      })
-      if (!row.terakhirUpdate || new Date(b.created_at) > new Date(row.terakhirUpdate)) {
-        row.terakhirUpdate = b.created_at
-        row.contohBatch = b
-        row.contohVariant = v
-      }
-    }
-  }
-  return [...map.values()].sort((a, b) => (a.nama_produk || '').localeCompare(b.nama_produk || ''))
+const fdt = ts => {
+  const d = new Date(ts)
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' }) +
+    ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 }
 
+const JALUR_MARGIN = [
+  { key: 'margin_kongsiapa', label: 'Kongsiapa' },
+  { key: 'margin_mis', label: 'Reseller' },
+  { key: 'margin_ec', label: 'End Customer' },
+]
+
 export default function DaftarHargaModule() {
+  const navigate = useNavigate()
   const [hist, setHist] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [openKey, setOpenKey] = useState(null)
+  const [toast, setToast] = useState('')
   const [q, setQ] = useState('')
+
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState([])
+  const [bulkJalur, setBulkJalur] = useState('margin_kongsiapa')
+  const [bulkValue, setBulkValue] = useState('')
+  const [bulkBusy, setBulkBusy] = useState(false)
+
+  const flash = msg => { setToast(msg); setTimeout(() => setToast(''), 2600) }
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -64,97 +40,162 @@ export default function DaftarHargaModule() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  const daftar = useMemo(() => buildDaftarHarga(hist), [hist])
   const filtered = useMemo(() => {
-    if (!q.trim()) return daftar
+    if (!q.trim()) return hist
     const qq = q.trim().toLowerCase()
-    return daftar.filter(r => (r.nama_produk || '').toLowerCase().includes(qq))
-  }, [daftar, q])
+    return hist.filter(b => (b.nama_produk || '').toLowerCase().includes(qq))
+  }, [hist, q])
+
+  function editBatch(batch) {
+    // bawa ke "pabrik" (kalkulator HPP) dengan batch ini termuat di form
+    navigate('/hpp', { state: { loadBatchId: batch.id } })
+  }
+
+  async function removeBatch(batch) {
+    if (!confirm(`Hapus "${batch.nama_produk}" dari Daftar Harga? Permanen, tidak bisa dibatalkan.`)) return
+    try { await deleteHppBatch(batch.id); load(); flash('Dihapus') }
+    catch (e) { alert('Gagal menghapus: ' + e.message) }
+  }
+
+  function toggleSelect(id) {
+    setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
+  }
+  function toggleSelectAll() {
+    setSelected(s => s.length === filtered.length ? [] : filtered.map(b => b.id))
+  }
+  function exitSelectMode() {
+    setSelectMode(false); setSelected([]); setBulkValue('')
+  }
+
+  async function bulkDeleteSelected() {
+    if (!selected.length) return
+    if (!confirm(`Hapus ${selected.length} produk dari Daftar Harga? Permanen, tidak bisa dibatalkan.`)) return
+    try {
+      const { error } = await supabase.from('hpp_batches').delete().in('id', selected)
+      if (error) throw error
+      exitSelectMode(); load(); flash('Terhapus')
+    } catch (e) { alert('Gagal menghapus: ' + e.message) }
+  }
+
+  async function applyBulkMargin() {
+    const val = parseFloat(bulkValue)
+    if (isNaN(val) || val < 0 || val >= 100) { alert('Isi angka margin yang valid (0-99).'); return }
+    if (!selected.length) return
+    const jalurLabel = JALUR_MARGIN.find(j => j.key === bulkJalur)?.label
+    if (!confirm(
+      `Ubah margin ${jalurLabel} jadi ${val}% untuk ${selected.length} produk?\n\n` +
+      `Ini CUMA mengubah target margin, TIDAK mengubah harga real yang sudah dicatat.`
+    )) return
+    setBulkBusy(true)
+    try {
+      const { error } = await supabase
+        .from('hpp_variants')
+        .update({ [bulkJalur]: val })
+        .in('batch_id', selected)
+      if (error) throw error
+      exitSelectMode(); load()
+      flash(`✓ Margin ${jalurLabel} ${selected.length} produk diperbarui`)
+    } catch (e) { alert('Gagal update massal: ' + e.message) }
+    finally { setBulkBusy(false) }
+  }
 
   return (
     <div className="hpp">
+      {toast && <div className="hpp-toast">{toast}</div>}
+
       <div className="card">
         <div className="card-head-h">Daftar Harga</div>
         <p className="muted sm" style={{ marginTop: 0 }}>
-          Satu baris per produk + ukuran, menampilkan harga TERBARU yang pernah diisi di
-          tiap jalur. Klik baris untuk lihat rincian perhitungan HPP-nya.
+          Hasil jadi dari Kalkulator HPP. Klik Edit untuk kembali ke kalkulator dan hitung ulang.
         </p>
         <input type="text" className="harga-search" placeholder="Cari nama produk…"
           value={q} onChange={e => setQ(e.target.value)} />
       </div>
 
+      {selectMode ? (
+        <div className="actionbar select-mode">
+          <label className="chk-all">
+            <input type="checkbox" checked={selected.length === filtered.length && filtered.length > 0}
+              onChange={toggleSelectAll} />
+            Pilih semua ({filtered.length})
+          </label>
+          <span className="sel-count">{selected.length} dipilih</span>
+          <button className="btn-danger" onClick={bulkDeleteSelected} disabled={!selected.length}>
+            🗑 Hapus {selected.length || ''}
+          </button>
+          <button className="btn-ghost" onClick={exitSelectMode}>Batal</button>
+        </div>
+      ) : (
+        <div className="actionbar">
+          {hist.length > 0 && <button className="btn-ghost-dark" onClick={() => setSelectMode(true)}>☑ Pilih / Ubah massal</button>}
+        </div>
+      )}
+
+      {selectMode && selected.length > 0 && (
+        <div className="card bulk-margin-card">
+          <div className="card-head-h">Ubah Margin Massal</div>
+          <p className="muted sm" style={{ marginTop: 0 }}>
+            Berlaku untuk {selected.length} produk terpilih. Cuma mengubah target margin,
+            harga real yang sudah dicatat TIDAK ikut berubah.
+          </p>
+          <div className="bulk-margin-row">
+            <select value={bulkJalur} onChange={e => setBulkJalur(e.target.value)}>
+              {JALUR_MARGIN.map(j => <option key={j.key} value={j.key}>{j.label}</option>)}
+            </select>
+            <input type="number" placeholder="Margin %" value={bulkValue}
+              onChange={e => setBulkValue(e.target.value)} style={{ width: 90 }} />
+            <button className="btn-primary" onClick={applyBulkMargin} disabled={bulkBusy || !bulkValue}>
+              {bulkBusy ? 'Menerapkan…' : 'Terapkan'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && <div className="err-banner">Error: {error}</div>}
       {loading ? <div className="loading">Memuat…</div>
         : filtered.length === 0 ? <div className="empty">
-            {daftar.length === 0 ? 'Belum ada riwayat HPP sama sekali.' : 'Tidak ada produk yang cocok dicari.'}
+            {hist.length === 0 ? 'Belum ada HPP yang dihitung. Buka Kalkulator HPP untuk mulai.' : 'Tidak ada produk yang cocok dicari.'}
           </div>
-        : filtered.map(row => {
-            const key = `${row.nama_produk}__${row.ukuran_target}`
-            const open = openKey === key
-            const R = calcHpp(row.contohBatch, [row.contohVariant])
-            const c = R.C[0]
-            return (
-              <div className="card harga-row" key={key}>
-                <div className="harga-row-head" onClick={() => setOpenKey(open ? null : key)}>
-                  <div className="harga-row-title">
-                    <b>{row.nama_produk}</b>
-                    <span className="muted sm"> · {row.ukuran_target}g</span>
-                  </div>
-                  <div className="harga-row-prices">
-                    {JALUR.map(j => {
-                      const p = row.perJalur[j.key]
-                      return (
-                        <span key={j.key} className={`harga-chip ${j.cls}`}>
-                          {j.label}: {p ? rp(p.harga) : '—'}
-                        </span>
-                      )
-                    })}
-                  </div>
-                  <button className="foldbtn">{open ? '▾ Tutup' : '▸ Rincian HPP'}</button>
-                </div>
-
-                {open && (
-                  <div className="harga-detail">
-                    <div className="hpp-stats" style={{ marginTop: 0 }}>
-                      <div><span className="sl">HPP / pack</span><b className="accent">{rp(c.hpp)}</b></div>
-                      <div><span className="sl">Data dari batch</span><b>{fdt(row.contohBatch.created_at)}</b></div>
-                    </div>
-
-                    <table className="out-tbl" style={{ marginTop: 12 }}>
-                      <thead><tr><th>Jalur</th><th>Harga</th><th>Margin</th><th>Untung/pack</th><th>Update terakhir</th></tr></thead>
-                      <tbody>
-                        {JALUR.map(j => {
-                          const p = row.perJalur[j.key]
-                          const jc = c.jalur[j.key]
-                          return (
-                            <tr key={j.key}>
-                              <td style={{ textAlign: 'left' }}>{j.label}</td>
-                              <td className={j.cls}>{p ? rp(p.harga) : '—'}</td>
-                              <td className={jc.marginReal !== null ? marginClass(jc.marginReal) : ''}>
-                                {jc.marginReal !== null ? pc(jc.marginReal) : '—'}
-                              </td>
-                              <td className={jc.untungReal !== null ? (jc.untungReal > 0 ? 'g' : 'r') : ''}>
-                                {jc.untungReal !== null ? rp(jc.untungReal) : '—'}
-                              </td>
-                              <td className="sm muted">{p ? fdt(p.tanggal) : '—'}</td>
-                            </tr>
-                          )
-                        })}
-                        {c.marginKongsiapaKeEcReal !== null && (
-                          <tr className="info-row">
-                            <td style={{ textAlign: 'left' }}>Kongsiapa → EC <span className="info-tag">info</span></td>
-                            <td colSpan={2} className="muted">{pc(c.marginKongsiapaKeEcReal)}</td>
-                            <td className="muted">{rp(c.selisihKongsiapaKeEcReal)}</td>
-                            <td></td>
-                          </tr>
+        : (
+          <div className="hist-wrap">
+            <table className="hist-tbl">
+              <thead>
+                <tr>
+                  {selectMode && <th></th>}
+                  <th>Produk</th><th>Terakhir diperbarui</th><th>Varian</th><th>Modal</th><th>Total gram</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(b => {
+                  const rr = calcHpp(b, b.hpp_variants || [])
+                  return (
+                    <tr key={b.id} className={selectMode ? 'selectable-row' : ''}
+                      onClick={selectMode ? () => toggleSelect(b.id) : undefined}>
+                      {selectMode && (
+                        <td onClick={e => e.stopPropagation()}>
+                          <input type="checkbox" checked={selected.includes(b.id)} onChange={() => toggleSelect(b.id)} />
+                        </td>
+                      )}
+                      <td><b>{b.nama_produk}</b></td>
+                      <td className="nowrap sm">{fdt(b.created_at)}</td>
+                      <td><span className="badge-v">{(b.hpp_variants || []).length} var</span></td>
+                      <td className="accent">{rp(rr.mo)}</td>
+                      <td>{rr.tg > 0 ? gr(rr.tg) : '—'}</td>
+                      <td className="nowrap">
+                        {!selectMode && (
+                          <>
+                            <button className="link-btn" onClick={() => editBatch(b)}>Edit</button>
+                            <button className="link-btn del" onClick={() => removeBatch(b)}>Hapus</button>
+                          </>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
     </div>
   )
 }

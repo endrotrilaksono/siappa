@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { getHppBatches, createHppBatch, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
 
@@ -65,6 +66,8 @@ function findHargaTerakhir(hist, namaProduk, ukuranTarget, realField) {
 }
 
 export default function HppModule() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [base, setBase] = useState({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
   const [vars, setVars] = useState([emptyVar(), emptyVar()])
   const [hist, setHist] = useState([])
@@ -89,6 +92,21 @@ export default function HppModule() {
     finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
+
+  // Datang dari tombol Edit di Daftar Harga: batch yang dituju dikirim
+  // lewat state navigasi, bukan URL biasa. Begitu riwayat termuat dan
+  // ada permintaan ini, langsung muat batch itu ke form, lalu bersihkan
+  // state navigasinya supaya tidak termuat ulang terus tiap render.
+  useEffect(() => {
+    const wantedId = location.state?.loadBatchId
+    if (!wantedId || hist.length === 0) return
+    const found = hist.find(b => b.id === wantedId)
+    if (found) {
+      loadBatch(found)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hist, location.state])
 
   // daftar nama produk unik dari riwayat, buat dropdown/datalist
   const namaProdukList = useMemo(() => {
@@ -417,53 +435,12 @@ export default function HppModule() {
       </div>{/* /.hpp-col-right */}
       </div>{/* /.hpp-layout */}
 
-      <div className="hist-head">
-        <h3>Riwayat Batch</h3>
-        <button className="link-btn" onClick={() => setShowImport(s => !s)}>Import data lama</button>
+      <div className="hint-daftarharga">
+        Batch yang sudah disimpan bisa dilihat, diedit, atau dihapus dari
+        tab <b>Daftar Harga</b> di sidebar.
       </div>
 
-      {showImport && (
-        <div className="card import-legacy">
-          <p className="muted sm">
-            Untuk memindahkan riwayat dari kalkulator Apps Script lama:
-            buka spreadsheet lama, salin isi kolom <b>data_json</b> (semua baris), bungkus jadi array JSON
-            <code> [ &#123;...&#125;, &#123;...&#125; ] </code>, lalu tempel di bawah.
-          </p>
-          <textarea rows={5} placeholder='[{"id":"...","ts":"...","nama":"...","state":{...}}]'
-            value={legacyText} onChange={e => setLegacyText(e.target.value)} />
-          <button className="btn-primary" onClick={doImportLegacy} disabled={!legacyText.trim()}>Import</button>
-        </div>
-      )}
-
       {error && <div className="err-banner">Error: {error}</div>}
-      {loading ? <div className="loading">Memuat riwayat…</div>
-        : hist.length === 0 ? <div className="empty">Belum ada batch tersimpan.</div>
-          : (
-            <div className="hist-wrap">
-              <table className="hist-tbl">
-                <thead><tr><th>#</th><th>Waktu</th><th>Produk</th><th>Varian</th><th>Modal</th><th>Total gram</th><th></th></tr></thead>
-                <tbody>
-                  {hist.map((b, i) => {
-                    const rr = calcHpp(b, b.hpp_variants || [])
-                    return (
-                      <tr key={b.id}>
-                        <td className="muted">{hist.length - i}</td>
-                        <td className="nowrap sm">{fdt(b.created_at)}</td>
-                        <td><b>{b.nama_produk}</b></td>
-                        <td><span className="badge-v">{(b.hpp_variants || []).length} var</span></td>
-                        <td className="accent">{rp(rr.mo)}</td>
-                        <td>{rr.tg > 0 ? gr(rr.tg) : '—'}</td>
-                        <td className="nowrap">
-                          <button className="link-btn" onClick={() => loadBatch(b)}>Muat</button>
-                          <button className="link-btn del" onClick={() => removeBatch(b)}>Hapus</button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
     </div>
   )
 }

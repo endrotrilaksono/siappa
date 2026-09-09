@@ -540,3 +540,21 @@ input[type="number"],
 .harga-chip.g{background:var(--ok-soft);border-color:#b7e0c4;color:var(--ok)}
 
 .harga-detail{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+
+/* ============ Daftar Harga v2 (edit ke pabrik, hapus, ubah massal) ============ */
+.harga-search{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 12px;
+  font-size:13px;background:var(--paper);font-family:inherit;margin-top:4px}
+
+.hint-daftarharga{font-size:12.5px;color:var(--muted);text-align:center;
+  padding:16px 12px 4px}
+.hint-daftarharga b{color:var(--primer)}
+
+.selectable-row{cursor:pointer}
+.selectable-row:hover td{background:var(--bg)}
+
+.bulk-margin-card{border-color:#c9caf5;background:#f4f4ff}
+.bulk-margin-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bulk-margin-row select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  font-size:13px;background:var(--paper);font-family:inherit}
+.bulk-margin-row input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  font-size:13px;background:var(--paper);font-family:inherit;text-align:right}
