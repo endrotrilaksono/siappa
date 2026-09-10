@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getHppBatches, createHppBatch, updateHppBatchWithVariants, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
+import { useUnsavedGuard } from '../lib/unsavedChanges'
 
 const emptyVar = () => ({
+  nama_varian: '',
   ukuran_target: '', jumlah_pack: '', kelebihan: '',
   packaging: '', label: '', lainnya: '',
   margin_kongsiapa: '20', harga_real_kongsiapa: '',
@@ -70,6 +72,7 @@ function findHargaTerakhir(hist, namaProduk, ukuranTarget, realField) {
 export default function HppModule() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { setDirty } = useUnsavedGuard()
   const [base, setBase] = useState({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
   const [vars, setVars] = useState([emptyVar(), emptyVar()])
   const [hist, setHist] = useState([])
@@ -81,6 +84,32 @@ export default function HppModule() {
   const [showImport, setShowImport] = useState(false)
   const [legacyText, setLegacyText] = useState('')
   const [editingBatchId, setEditingBatchId] = useState(null)
+
+  // Skip menandai "dirty" pada perubahan PERTAMA setelah form dikosongkan
+  // ulang secara terprogram (loadBatch, mulaiBaru, setelah berhasil save).
+  // Tanpa ini, sekadar MEMUAT data akan langsung dianggap "ada perubahan
+  // belum disimpan", padahal user belum ngetik apa-apa.
+  const skipDirtyRef = useRef(true)
+
+  useEffect(() => {
+    if (skipDirtyRef.current) { skipDirtyRef.current = false; return }
+    setDirty(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, vars])
+
+  // Peringatan bawaan browser kalau user coba tutup tab/refresh padahal
+  // ada perubahan belum disimpan. Tampilan dialog ini TIDAK BISA diubah
+  // warnanya, itu memang dikunci browser demi keamanan (supaya situs
+  // tidak bisa memalsukan dialog sistem).
+  useEffect(() => {
+    function handler(e) {
+      if (skipDirtyRef.current) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [])
 
   const R = calcHpp(base, vars)
 
@@ -132,6 +161,7 @@ export default function HppModule() {
         total_kg: nv(base.total_kg), harga_ikan: nv(base.harga_ikan), biaya_bumbu: nv(base.biaya_bumbu),
       }
       const variantsPayload = vars.map(v => ({
+        nama_varian: v.nama_varian || null,
         ukuran_target: nv(v.ukuran_target), jumlah_pack: nv(v.jumlah_pack), kelebihan: nv(v.kelebihan),
         packaging: nv(v.packaging), label: nv(v.label), lainnya: nv(v.lainnya),
         margin_kongsiapa: nv(v.margin_kongsiapa), harga_real_kongsiapa: nv(v.harga_real_kongsiapa),
@@ -148,12 +178,15 @@ export default function HppModule() {
         await createHppBatch(batchPayload, variantsPayload)
         flash('✓ Batch baru tersimpan')
       }
+      setDirty(false)
       load()
     } catch (e) { alert('Gagal menyimpan: ' + e.message) }
     finally { setSaving(false) }
   }
 
   function mulaiBaru() {
+    skipDirtyRef.current = true
+    setDirty(false)
     setEditingBatchId(null)
     setBase({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
     setVars([emptyVar(), emptyVar()])
@@ -167,12 +200,15 @@ export default function HppModule() {
   }
 
   function loadBatch(b) {
+    skipDirtyRef.current = true
+    setDirty(false)
     setEditingBatchId(b.id)
     setBase({
       nama_produk: b.nama_produk || '',
       total_kg: b.total_kg ?? '', harga_ikan: b.harga_ikan ?? '', biaya_bumbu: b.biaya_bumbu ?? '0',
     })
     setVars((b.hpp_variants || []).length ? b.hpp_variants.map(v => ({
+      nama_varian: v.nama_varian || '',
       ukuran_target: v.ukuran_target ?? '', jumlah_pack: v.jumlah_pack ?? '', kelebihan: v.kelebihan ?? '',
       packaging: v.packaging ?? '', label: v.label ?? '', lainnya: v.lainnya ?? '',
       margin_kongsiapa: v.margin_kongsiapa ?? '20', harga_real_kongsiapa: v.harga_real_kongsiapa ?? '',
@@ -255,6 +291,9 @@ export default function HppModule() {
                   <b>Varian {i + 1}</b>
                   {vars.length > 1 && <button className="var-x" onClick={() => delVar(i)}>✕</button>}
                 </div>
+                <div className="fld-sm"><label>Nama varian</label>
+                  <input type="text" placeholder="mis: Nila Bersih 235g Original" value={v.nama_varian}
+                    onChange={e => setV(i, 'nama_varian', e.target.value)} /></div>
                 <div className="fld-sm"><label>Ukuran target (g)</label>
                   <input type="number" placeholder="0" value={v.ukuran_target} onChange={e => setV(i, 'ukuran_target', e.target.value)} /></div>
                 <div className="fld-sm"><label>Jumlah pack jadi</label>
@@ -414,6 +453,22 @@ export default function HppModule() {
                             <td>Selisih harga Kongsiapa → EC <span className="info-tag">info</span></td>
                             {R.C.map((c, i) => (
                               <td key={i} className="muted">{c.selisihKongsiapaKeEcReal !== null ? rp(c.selisihKongsiapaKeEcReal) : '—'}</td>
+                            ))}
+                          </tr>
+                        </>
+                      )}
+                      {j.key === 'kongsiapa' && R.C.some(c => c.marginKongsiapaKeKonsinyasiReal !== null) && (
+                        <>
+                          <tr className="info-row">
+                            <td>Margin Kongsiapa → Konsinyasi <span className="info-tag">info</span></td>
+                            {R.C.map((c, i) => (
+                              <td key={i} className="muted">{c.marginKongsiapaKeKonsinyasiReal !== null ? pc(c.marginKongsiapaKeKonsinyasiReal) : '—'}</td>
+                            ))}
+                          </tr>
+                          <tr className="info-row">
+                            <td>Selisih harga Kongsiapa → Konsinyasi <span className="info-tag">info</span></td>
+                            {R.C.map((c, i) => (
+                              <td key={i} className="muted">{c.selisihKongsiapaKeKonsinyasiReal !== null ? rp(c.selisihKongsiapaKeKonsinyasiReal) : '—'}</td>
                             ))}
                           </tr>
                         </>

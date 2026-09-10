@@ -145,7 +145,10 @@ export default function DaftarHargaModule() {
   const filtered = useMemo(() => {
     if (!q.trim()) return rows
     const qq = q.trim().toLowerCase()
-    return rows.filter(r => (r.batch.nama_produk || '').toLowerCase().includes(qq))
+    return rows.filter(r =>
+      (r.batch.nama_produk || '').toLowerCase().includes(qq) ||
+      (r.variant.nama_varian || '').toLowerCase().includes(qq)
+    )
   }, [rows, q])
 
   function editBatch(batch) {
@@ -153,7 +156,8 @@ export default function DaftarHargaModule() {
   }
 
   async function removeVariant(row) {
-    if (!confirm(`Hapus "${row.batch.nama_produk} ${row.variant.ukuran_target}g" dari Daftar Harga? Permanen.`)) return
+    const nama = row.variant.nama_varian || `${row.batch.nama_produk} ${row.variant.ukuran_target}g`
+    if (!confirm(`Hapus "${nama}" dari Daftar Harga? Permanen.`)) return
     try { await deleteHppVariant(row.variant.id); load(); flash('Dihapus') }
     catch (e) { alert('Gagal menghapus: ' + e.message) }
   }
@@ -264,8 +268,8 @@ export default function DaftarHargaModule() {
                     <input type="checkbox" checked={selected.includes(rowKey)} onChange={() => toggleSelect(rowKey)} />
                   )}
                   <div className="harga-row2-title">
-                    <b>{row.batch.nama_produk}</b>
-                    <span className="muted sm"> · {row.variant.ukuran_target}g · HPP {rp(row.hpp)}</span>
+                    <b>{row.variant.nama_varian || `${row.batch.nama_produk} ${row.variant.ukuran_target}g`}</b>
+                    <span className="muted sm"> · HPP {rp(row.hpp)}</span>
                   </div>
                   {!selectMode && (
                     <div className="harga-row2-actions">

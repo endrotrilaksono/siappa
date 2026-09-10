@@ -70,7 +70,15 @@ export function calcHpp(base, vars) {
     const marginKongsiapaKeEcReal = (rK > 0 && rE > 0) ? ((rE - rK) / rE) * 100 : null
     const selisihKongsiapaKeEcReal = (rK > 0 && rE > 0) ? (rE - rK) : null
 
-    return { ef, ju, hI, hK, hpp, jalur: { kongsiapa, reseller, konsinyasi, ec }, marginKongsiapaKeEcReal, selisihKongsiapaKeEcReal }
+    const rKons = nv(v.harga_real_konsinyasi)
+    const marginKongsiapaKeKonsinyasiReal = (rK > 0 && rKons > 0) ? ((rKons - rK) / rKons) * 100 : null
+    const selisihKongsiapaKeKonsinyasiReal = (rK > 0 && rKons > 0) ? (rKons - rK) : null
+
+    return {
+      ef, ju, hI, hK, hpp, jalur: { kongsiapa, reseller, konsinyasi, ec },
+      marginKongsiapaKeEcReal, selisihKongsiapaKeEcReal,
+      marginKongsiapaKeKonsinyasiReal, selisihKongsiapaKeKonsinyasiReal,
+    }
   })
 
   return { mo, tg, yr, C }

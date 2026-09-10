@@ -6,6 +6,7 @@ import KomponenHppModule from './modules/KomponenHppModule'
 import DaftarHargaModule from './modules/DaftarHargaModule'
 import AuthGate from './components/AuthGate'
 import { hasCredentials } from './lib/supabase'
+import { UnsavedChangesProvider } from './lib/unsavedChanges'
 
 const TITLES = { '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP', '/harga': 'Daftar Harga' }
 
@@ -59,7 +60,9 @@ export default function App() {
     <AuthGate>
       {(session, signOut) => (
         <BrowserRouter>
-          <Shell signOut={signOut} />
+          <UnsavedChangesProvider>
+            <Shell signOut={signOut} />
+          </UnsavedChangesProvider>
         </BrowserRouter>
       )}
     </AuthGate>

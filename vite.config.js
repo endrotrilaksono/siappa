@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.ico', 'favicon-32.png', 'favicon-16.png'],
       manifest: {
         name: 'Siappa',
         short_name: 'Siappa',
