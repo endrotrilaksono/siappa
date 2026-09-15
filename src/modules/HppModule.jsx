@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { getHppBatches, createHppBatch, updateHppBatchWithVariants, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
 import { useUnsavedGuard } from '../lib/unsavedChanges'
+import MarketplacePanel, { emptyMpPanel } from '../components/MarketplacePanel'
 
 const emptyVar = () => ({
   nama_varian: '',
@@ -12,9 +13,10 @@ const emptyVar = () => ({
   margin_mis: '15', harga_real_mis: '',
   margin_konsinyasi: '18', harga_real_konsinyasi: '',
   margin_ec: '25', harga_real: '',
+  mp_shopee: emptyMpPanel(),
+  mp_tiktok: emptyMpPanel(),
 })
 
-// Urutan hirarki tetap: Kongsiapa -> Reseller -> Konsinyasi -> End Customer
 const JALUR = [
   { key: 'kongsiapa', label: 'Kongsiapa', sub: '', marginField: 'margin_kongsiapa', realField: 'harga_real_kongsiapa', cls: 'k' },
   { key: 'reseller', label: 'Reseller', sub: '', marginField: 'margin_mis', realField: 'harga_real_mis', cls: '' },
@@ -22,11 +24,6 @@ const JALUR = [
   { key: 'ec', label: 'End Customer', sub: '', marginField: 'margin_ec', realField: 'harga_real', cls: 'g' },
 ]
 
-const fdt = ts => {
-  const d = new Date(ts)
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' }) +
-    ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-}
 const fdtShort = ts => new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 
 function ComponentPicker({ components, onPick }) {
@@ -46,10 +43,6 @@ function ComponentPicker({ components, onPick }) {
   )
 }
 
-// Cari harga real terakhir untuk kombinasi nama produk + ukuran target,
-// dari riwayat batch yang sudah ada (client-side, tidak query baru ke
-// server). Dicari per jalur (kongsiapa/reseller/ec) secara terpisah,
-// karena bisa saja salah satu jalur pernah diisi tapi jalur lain belum.
 function findHargaTerakhir(hist, namaProduk, ukuranTarget, realField) {
   if (!namaProduk || !ukuranTarget) return null
   const namaN = namaProduk.trim().toLowerCase()
@@ -81,14 +74,8 @@ export default function HppModule() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState('')
-  const [showImport, setShowImport] = useState(false)
-  const [legacyText, setLegacyText] = useState('')
   const [editingBatchId, setEditingBatchId] = useState(null)
 
-  // Skip menandai "dirty" pada perubahan PERTAMA setelah form dikosongkan
-  // ulang secara terprogram (loadBatch, mulaiBaru, setelah berhasil save).
-  // Tanpa ini, sekadar MEMUAT data akan langsung dianggap "ada perubahan
-  // belum disimpan", padahal user belum ngetik apa-apa.
   const skipDirtyRef = useRef(true)
 
   useEffect(() => {
@@ -97,10 +84,6 @@ export default function HppModule() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base, vars])
 
-  // Peringatan bawaan browser kalau user coba tutup tab/refresh padahal
-  // ada perubahan belum disimpan. Tampilan dialog ini TIDAK BISA diubah
-  // warnanya, itu memang dikunci browser demi keamanan (supaya situs
-  // tidak bisa memalsukan dialog sistem).
   useEffect(() => {
     function handler(e) {
       if (skipDirtyRef.current) return
@@ -125,10 +108,6 @@ export default function HppModule() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  // Datang dari tombol Edit di Daftar Harga: batch yang dituju dikirim
-  // lewat state navigasi, bukan URL biasa. Begitu riwayat termuat dan
-  // ada permintaan ini, langsung muat batch itu ke form, lalu bersihkan
-  // state navigasinya supaya tidak termuat ulang terus tiap render.
   useEffect(() => {
     const wantedId = location.state?.loadBatchId
     if (!wantedId || hist.length === 0) return
@@ -140,7 +119,6 @@ export default function HppModule() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hist, location.state])
 
-  // daftar nama produk unik dari riwayat, buat dropdown/datalist
   const namaProdukList = useMemo(() => {
     const set = new Set()
     hist.forEach(b => { if (b.nama_produk) set.add(b.nama_produk) })
@@ -168,10 +146,11 @@ export default function HppModule() {
         margin_mis: nv(v.margin_mis), harga_real_mis: nv(v.harga_real_mis),
         margin_konsinyasi: nv(v.margin_konsinyasi), harga_real_konsinyasi: nv(v.harga_real_konsinyasi),
         margin_ec: nv(v.margin_ec), harga_real: nv(v.harga_real),
+        mp_shopee: v.mp_shopee || emptyMpPanel(),
+        mp_tiktok: v.mp_tiktok || emptyMpPanel(),
       }))
 
       if (editingBatchId) {
-        // sedang edit batch yang sudah ada -> TIMPA, jangan bikin baru
         await updateHppBatchWithVariants(editingBatchId, batchPayload, variantsPayload)
         flash('✓ Perubahan disimpan (menimpa data lama)')
       } else {
@@ -193,12 +172,6 @@ export default function HppModule() {
     flash('Form dikosongkan, siap hitung produk baru')
   }
 
-  async function removeBatch(b) {
-    if (!confirm(`Hapus batch "${b.nama_produk}"? Permanen.`)) return
-    try { await deleteHppBatch(b.id); load(); flash('Batch dihapus') }
-    catch (e) { alert('Gagal: ' + e.message) }
-  }
-
   function loadBatch(b) {
     skipDirtyRef.current = true
     setDirty(false)
@@ -215,23 +188,11 @@ export default function HppModule() {
       margin_mis: v.margin_mis ?? '15', harga_real_mis: v.harga_real_mis ?? '',
       margin_konsinyasi: v.margin_konsinyasi ?? '18', harga_real_konsinyasi: v.harga_real_konsinyasi ?? '',
       margin_ec: v.margin_ec ?? '25', harga_real: v.harga_real ?? '',
+      mp_shopee: v.mp_shopee || emptyMpPanel(),
+      mp_tiktok: v.mp_tiktok || emptyMpPanel(),
     })) : [emptyVar()])
     window.scrollTo({ top: 0, behavior: 'smooth' })
     flash('Data batch dimuat ke form')
-  }
-
-  async function doImportLegacy() {
-    let items
-    try {
-      items = JSON.parse(legacyText)
-      if (!Array.isArray(items)) throw new Error('Formatnya harus array JSON')
-    } catch (e) { alert('JSON tidak valid: ' + e.message); return }
-    if (!confirm(`Import ${items.length} batch lama ke Supabase?`)) return
-    try {
-      const n = await importHppLegacy(items)
-      flash(`✓ ${n} batch lama terimport`)
-      setShowImport(false); setLegacyText(''); load()
-    } catch (e) { alert('Gagal import: ' + e.message) }
   }
 
   const ready = R.mo > 0 && R.tg > 0
@@ -244,7 +205,6 @@ export default function HppModule() {
       <div className="hpp-layout">
       <div className="hpp-col-left">
 
-      {/* ---- BAHAN BAKU ---- */}
       <div className="card">
         <div className="card-head-h">Bahan Baku</div>
         <div className="hpp-grid2">
@@ -278,7 +238,6 @@ export default function HppModule() {
         </div>
       </div>
 
-      {/* ---- VARIAN ---- */}
       <div className="card">
         <div className="card-head-h">Varian Produksi</div>
         <div className="var-wrap">
@@ -321,7 +280,6 @@ export default function HppModule() {
                   <ComponentPicker components={components} onPick={val => setV(i, 'lainnya', val)} />
                 </div>
 
-                {/* ---- PER JALUR: margin -> pratinjau target -> harga real -> harga terakhir ---- */}
                 {JALUR.map(j => {
                   const last = findHargaTerakhir(hist, base.nama_produk, v.ukuran_target, j.realField)
                   const jc = c ? c.jalur[j.key] : null
@@ -354,6 +312,16 @@ export default function HppModule() {
                     </div>
                   )
                 })}
+
+                <details className="mp-accordion">
+                  <summary className="mp-summary">Marketplace (Shopee, TikTok Shop)</summary>
+                  <div className="mp-body">
+                    <MarketplacePanel label="Shopee" hpp={c ? c.hpp : 0}
+                      value={v.mp_shopee} onChange={val => setV(i, 'mp_shopee', val)} />
+                    <MarketplacePanel label="TikTok Shop" hpp={c ? c.hpp : 0}
+                      value={v.mp_tiktok} onChange={val => setV(i, 'mp_tiktok', val)} />
+                  </div>
+                </details>
               </div>
             )
           })}
@@ -374,11 +342,10 @@ export default function HppModule() {
         </button>
       </div>
 
-      </div>{/* /.hpp-col-left */}
+      </div>
 
       <div className="hpp-col-right">
 
-      {/* ---- OUTPUT: cuma dari harga real, dikelompokkan per jalur ---- */}
       <div className="card">
         <div className="card-head-h">Hasil Kalkulasi HPP</div>
         {!ready ? (
@@ -482,8 +449,8 @@ export default function HppModule() {
         )}
       </div>
 
-      </div>{/* /.hpp-col-right */}
-      </div>{/* /.hpp-layout */}
+      </div>
+      </div>
 
       <div className="hint-daftarharga">
         Batch yang sudah disimpan bisa dilihat, diedit, atau dihapus dari

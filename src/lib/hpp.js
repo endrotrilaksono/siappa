@@ -1,22 +1,3 @@
-// ============================================================
-// MESIN HITUNG HPP — v9
-// Rumus dasar (HPP, alokasi modal per gram) TIDAK berubah dari versi
-// sebelumnya, sudah diverifikasi berulang kali. Yang berubah di v9:
-//
-// 1. Hasil disusun per JALUR PENJUALAN (kongsiapa, reseller, ec), urut
-//    hirarki: Kongsiapa -> Reseller -> End Customer. Bukan lagi array
-//    datar yang harus dibaca satu-satu.
-// 2. Tiap jalur punya: margin target (input), harga target (dihitung
-//    dari margin, dipakai untuk PRATINJAU di form, bukan tabel hasil),
-//    harga real (input), margin real vs HPP, untung real /pack, untung
-//    real total batch.
-// 3. Reseller sekarang JUGA punya harga real (sebelumnya tidak ada).
-// 4. Margin Kongsiapa -> EC sekarang dihitung dari DUA HARGA REAL
-//    (real Kongsiapa vs real EC), BUKAN dari harga target seperti
-//    versi sebelumnya. Kalau salah satu atau dua-duanya belum diisi,
-//    hasilnya null (belum bisa dihitung), bukan 0.
-// ============================================================
-
 export const nv = v => parseFloat(v) || 0
 export const rp = v => 'Rp ' + Math.round(v).toLocaleString('id-ID')
 export const gr = v => Math.round(v).toLocaleString('id-ID') + ' g'
@@ -29,13 +10,6 @@ function calcJalur(hpp, margin, real) {
   return { margin, target, real, marginReal, untungReal }
 }
 
-/**
- * @param {{total_kg,harga_ikan,biaya_bumbu}} base
- * @param {Array} vars - {ukuran_target,jumlah_pack,kelebihan,packaging,label,lainnya,
- *                         margin_kongsiapa,harga_real_kongsiapa,
- *                         margin_mis,harga_real_mis,
- *                         margin_ec,harga_real}
- */
 export function calcHpp(base, vars) {
   const kg = nv(base.total_kg)
   const hi = nv(base.harga_ikan)
@@ -58,13 +32,10 @@ export function calcHpp(base, vars) {
     const konsinyasi = calcJalur(hpp, nv(v.margin_konsinyasi), nv(v.harga_real_konsinyasi))
     const ec = calcJalur(hpp, nv(v.margin_ec), nv(v.harga_real))
 
-    // untung total batch, per jalur (butuh ju, dihitung di luar calcJalur
-    // biar calcJalur tetap murni per-pack)
     ;[kongsiapa, reseller, konsinyasi, ec].forEach(j => {
       j.untungRealTotal = j.untungReal !== null ? j.untungReal * ju : null
     })
 
-    // Margin real Kongsiapa -> EC: dari DUA HARGA REAL, bukan HPP.
     const rK = nv(v.harga_real_kongsiapa)
     const rE = nv(v.harga_real)
     const marginKongsiapaKeEcReal = (rK > 0 && rE > 0) ? ((rE - rK) / rE) * 100 : null

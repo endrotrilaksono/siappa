@@ -658,3 +658,93 @@ input[type="number"],
   background: transparent; border: none; font-family: inherit;
   text-decoration: none; color: inherit;
 }
+
+/* ============ Marketplace: accordion per varian ============ */
+.mp-accordion{
+  margin-top: 14px;
+  border: 1px solid var(--line, #e4e5cf);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.mp-summary{
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primer, #0f1499);
+  background: #f4f4ff;
+  list-style: none;
+}
+.mp-summary::-webkit-details-marker{ display: none; }
+.mp-summary::before{ content: '▸ '; }
+.mp-accordion[open] .mp-summary::before{ content: '▾ '; }
+.mp-body{
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mp-panel{
+  background: #fff;
+  border: 1px solid var(--line, #e4e5cf);
+  border-radius: 9px;
+  padding: 11px 12px;
+}
+.mp-panel-title{ font-size: 12.5px; color: var(--ink, #12143a); display: block; margin-bottom: 8px; }
+
+.mp-potongan-list{ display: flex; flex-direction: column; gap: 5px; margin-bottom: 6px; }
+.mp-potongan-row{ display: grid; grid-template-columns: 1fr 70px 52px 22px; gap: 5px; align-items: center; }
+.mp-potongan-row input, .mp-potongan-row select{
+  border: 1px solid var(--line, #e4e5cf);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-family: inherit;
+}
+.mp-potongan-row input[type="number"]{ text-align: right; font-variant-numeric: tabular-nums; }
+.mp-row-x{
+  border: none; background: transparent; color: var(--warn, #c0392b);
+  font-size: 13px; cursor: pointer; padding: 0;
+}
+.mp-add-row{
+  font-size: 10.5px; font-weight: 700; color: var(--primer, #0f1499);
+  background: transparent; border: none; padding: 2px 0; cursor: pointer;
+}
+
+.mp-margin-fld{ margin-top: 8px; }
+.mp-margin-fld label{ display: block; font-size: 10px; color: var(--muted, #6b6b6b); margin-bottom: 3px; }
+.mp-margin-fld input{
+  width: 100px; border: 1px solid var(--line, #e4e5cf); border-radius: 6px;
+  padding: 5px 7px; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums;
+}
+
+.mp-error{
+  margin-top: 8px; font-size: 11px; color: var(--warn, #c0392b);
+  background: var(--warn-soft, #fdeae5); border-radius: 6px; padding: 6px 8px;
+}
+
+.mp-result{
+  margin-top: 10px; background: var(--ok-soft, #e1f5ee); border-radius: 8px; padding: 8px 10px;
+}
+.mp-result-row{ display: flex; justify-content: space-between; font-size: 11px; color: var(--ok, #0f6e56); margin-bottom: 3px; }
+.mp-result-row:last-child{ margin-bottom: 0; }
+.mp-result-row b{ font-variant-numeric: tabular-nums; }
+
+.mp-gimmick{ margin-top: 10px; border-top: 1px dashed var(--line, #e4e5cf); padding-top: 10px; }
+.mp-gimmick-title{ font-size: 10.5px; font-weight: 700; color: var(--muted, #6b6b6b); margin-bottom: 6px; }
+.mp-gimmick-mode{ display: flex; gap: 12px; margin-bottom: 8px; }
+.mp-gimmick-mode label{ font-size: 10.5px; display: flex; align-items: center; gap: 4px; }
+.mp-gimmick-fld label{ display: block; font-size: 10px; color: var(--muted, #6b6b6b); margin-bottom: 3px; }
+.mp-gimmick-fld input{
+  width: 120px; border: 1px solid var(--line, #e4e5cf); border-radius: 6px;
+  padding: 5px 7px; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.mp-gimmick-result{ margin-top: 8px; font-size: 11.5px; color: var(--ink, #12143a); }
+.mp-gimmick-result b{ font-variant-numeric: tabular-nums; color: var(--primer, #0f1499); }
+
+/* warna khusus section Konsinyasi (jalur ke-4), kalau belum ada dari
+   revisi sebelumnya, ini jaga-jaga supaya tetap konsisten */
+.o{ color: #c2703c; }
+.jalur-blok.o .jalur-sec{ color: #c2703c; }
+.out-tbl tr.sec.konsinyasi td{ background: #fdefe4; color: #c2703c; }
