@@ -4,6 +4,7 @@ import { getHppBatches, createHppBatch, updateHppBatchWithVariants, deleteHppBat
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
 import { useUnsavedGuard } from '../lib/unsavedChanges'
 import MarketplacePanel, { emptyMpPanel } from '../components/MarketplacePanel'
+import { computeMarketplace } from '../lib/marketplace'
 
 const emptyVar = () => ({
   nama_varian: '',
@@ -196,7 +197,10 @@ export default function HppModule() {
   }
 
   const ready = R.mo > 0 && R.tg > 0
-  const anyRealFilled = R.C.some(c => JALUR.some(j => c.jalur[j.key].real > 0))
+  const anyMpFilled = vars.some((v, i) =>
+    ['mp_shopee', 'mp_tiktok'].some(k => computeMarketplace(R.C[i]?.hpp || 0, (v[k] || {}).potongan, (v[k] || {}).marginKotor).hargaJual !== null)
+  )
+  const anyRealFilled = R.C.some(c => JALUR.some(j => c.jalur[j.key].real > 0)) || anyMpFilled
 
   return (
     <div className="hpp">
@@ -313,15 +317,15 @@ export default function HppModule() {
                   )
                 })}
 
-                <details className="mp-accordion">
-                  <summary className="mp-summary">Marketplace (Shopee, TikTok Shop)</summary>
+                <div className="mp-section-card">
+                  <div className="mp-section-title">Marketplace (Shopee, TikTok Shop)</div>
                   <div className="mp-body">
                     <MarketplacePanel label="Shopee" hpp={c ? c.hpp : 0}
                       value={v.mp_shopee} onChange={val => setV(i, 'mp_shopee', val)} />
                     <MarketplacePanel label="TikTok Shop" hpp={c ? c.hpp : 0}
                       value={v.mp_tiktok} onChange={val => setV(i, 'mp_tiktok', val)} />
                   </div>
-                </details>
+                </div>
               </div>
             )
           })}
@@ -440,6 +444,34 @@ export default function HppModule() {
                           </tr>
                         </>
                       )}
+                    </Fragment>
+                  )
+                })}
+
+                {[
+                  { key: 'mp_shopee', label: 'Shopee', cls: 'sp' },
+                  { key: 'mp_tiktok', label: 'TikTok Shop', cls: 'tt' },
+                ].map(mp => {
+                  const results = vars.map((v, i) => computeMarketplace(R.C[i].hpp, (v[mp.key] || {}).potongan, (v[mp.key] || {}).marginKotor))
+                  const anyFilled = results.some(r => r.hargaJual !== null)
+                  if (!anyFilled) return null
+                  return (
+                    <Fragment key={mp.key}>
+                      <tr className={`sec ${mp.cls}`}>
+                        <td colSpan={vars.length + 1}>Harga ke {mp.label}</td>
+                      </tr>
+                      <tr className="tot">
+                        <td>Harga jual disarankan</td>
+                        {results.map((r, i) => <td key={i} className={mp.cls}>{r.hargaJual !== null ? rp(r.hargaJual) : '—'}</td>)}
+                      </tr>
+                      <tr>
+                        <td>Margin kotor (Rp)</td>
+                        {results.map((r, i) => (
+                          <td key={i} className={r.marginKotorRp !== null ? (r.marginKotorRp > 0 ? 'g' : 'r') : ''}>
+                            {r.marginKotorRp !== null ? rp(r.marginKotorRp) : '—'}
+                          </td>
+                        ))}
+                      </tr>
                     </Fragment>
                   )
                 })}

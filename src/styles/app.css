@@ -659,30 +659,33 @@ input[type="number"],
   text-decoration: none; color: inherit;
 }
 
-/* ============ Marketplace: accordion per varian ============ */
-.mp-accordion{
+/* warna khusus section Konsinyasi (jalur ke-4), kalau belum ada dari
+   revisi sebelumnya, ini jaga-jaga supaya tetap konsisten */
+.o{ color: #c2703c; }
+.jalur-blok.o .jalur-sec{ color: #c2703c; }
+.out-tbl tr.sec.konsinyasi td{ background: #fdefe4; color: #c2703c; }
+
+/* ============ Marketplace: card berdiri sendiri (bukan accordion lagi) ============ */
+.mp-section-card{
   margin-top: 14px;
   border: 1px solid var(--line, #e4e5cf);
   border-radius: 10px;
   overflow: hidden;
+  background: #f4f4ff;
 }
-.mp-summary{
-  cursor: pointer;
+.mp-section-title{
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 700;
   color: var(--primer, #0f1499);
-  background: #f4f4ff;
-  list-style: none;
+  border-bottom: 1px solid var(--line, #e4e5cf);
 }
-.mp-summary::-webkit-details-marker{ display: none; }
-.mp-summary::before{ content: '▸ '; }
-.mp-accordion[open] .mp-summary::before{ content: '▾ '; }
 .mp-body{
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background: #fff;
 }
 
 .mp-panel{
@@ -743,8 +746,18 @@ input[type="number"],
 .mp-gimmick-result{ margin-top: 8px; font-size: 11.5px; color: var(--ink, #12143a); }
 .mp-gimmick-result b{ font-variant-numeric: tabular-nums; color: var(--primer, #0f1499); }
 
-/* warna khusus section Konsinyasi (jalur ke-4), kalau belum ada dari
-   revisi sebelumnya, ini jaga-jaga supaya tetap konsisten */
+/* warna Konsinyasi (jalur ke-4), jaga-jaga kalau belum ada dari revisi sebelumnya */
 .o{ color: #c2703c; }
 .jalur-blok.o .jalur-sec{ color: #c2703c; }
 .out-tbl tr.sec.konsinyasi td{ background: #fdefe4; color: #c2703c; }
+
+/* warna Shopee (oranye-merah, beda dari Konsinyasi) dan TikTok (teal gelap) */
+.sp{ color: #d0421b; }
+.out-tbl tr.sec.sp td{ background: #fde4de; color: #d0421b; }
+.jalur-chip.sp{ background: #fde4de; border-color: #f3bcae; }
+.jalur-chip.sp .chip-label{ color: #d0421b; }
+
+.tt{ color: #0d5c5c; }
+.out-tbl tr.sec.tt td{ background: #e2f2f0; color: #0d5c5c; }
+.jalur-chip.tt{ background: #e2f2f0; border-color: #a9d8d3; }
+.jalur-chip.tt .chip-label{ color: #0d5c5c; }

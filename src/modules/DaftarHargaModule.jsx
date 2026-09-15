@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getHppBatches, deleteHppVariant, updateHppVariant } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { rp, pc, nv } from '../lib/hpp'
+import { computeMarketplace } from '../lib/marketplace'
 
 const JALUR = [
   { key: 'kongsiapa', label: 'Kongsiapa', marginField: 'margin_kongsiapa', realField: 'harga_real_kongsiapa' },
@@ -11,8 +12,11 @@ const JALUR = [
   { key: 'ec', label: 'End Customer', marginField: 'margin_ec', realField: 'harga_real' },
 ]
 
-// HPP per pack utk satu varian (rumus sama seperti calcHpp, tapi cuma
-// perlu HPP-nya saja di sini, dihitung dari batch induknya).
+const MP_PLATFORMS = [
+  { key: 'mp_shopee', label: 'Shopee', cls: 'sp' },
+  { key: 'mp_tiktok', label: 'TikTok Shop', cls: 'tt' },
+]
+
 function hppVarian(batch, variant) {
   const kg = nv(batch.total_kg), hi = nv(batch.harga_ikan), hb = nv(batch.biaya_bumbu)
   const mo = kg * (hi + hb)
@@ -23,8 +27,8 @@ function hppVarian(batch, variant) {
   return hI + hK
 }
 
-// ---------- Chip satu jalur, dobel klik untuk edit margin+harga langsung ----------
-function JalurChip({ jalur, batch, variant, hpp, onSaved }) {
+// ---------- Chip jalur biasa (Kongsiapa/Reseller/Konsinyasi/EC), dobel klik edit ----------
+function JalurChip({ jalur, variant, hpp, onSaved }) {
   const [editing, setEditing] = useState(false)
   const [marginVal, setMarginVal] = useState('')
   const [hargaVal, setHargaVal] = useState('')
@@ -40,7 +44,6 @@ function JalurChip({ jalur, batch, variant, hpp, onSaved }) {
     setHargaVal(String(harga || ''))
     setEditing(true)
   }
-
   function onMarginChange(v) {
     setMarginVal(v)
     const m = parseFloat(v)
@@ -51,7 +54,6 @@ function JalurChip({ jalur, batch, variant, hpp, onSaved }) {
     const h = parseFloat(v)
     if (!isNaN(h) && h > 0) setMarginVal((((h - hpp) / h) * 100).toFixed(1))
   }
-
   async function commit() {
     setBusy(true)
     try {
@@ -102,6 +104,25 @@ function JalurChip({ jalur, batch, variant, hpp, onSaved }) {
   )
 }
 
+// ---------- Chip Marketplace (Shopee/TikTok), baca-saja, dihitung dari data tersimpan ----------
+function MpChip({ platform, mpData, hpp }) {
+  const result = computeMarketplace(hpp, (mpData || {}).potongan, (mpData || {}).marginKotor)
+  const warna = result.hargaJual === null ? 'n' : result.marginKotorRp >= 0 ? 'g' : 'r'
+  return (
+    <div className={`jalur-chip ${warna}`} title="Edit lewat Kalkulator HPP">
+      <div className="chip-label">{platform.label}</div>
+      {result.hargaJual !== null ? (
+        <>
+          <div className="chip-harga">{rp(result.hargaJual)}</div>
+          <div className="chip-sub">margin {rp(result.marginKotorRp)}</div>
+        </>
+      ) : (
+        <div className="chip-kosong">Belum diisi</div>
+      )}
+    </div>
+  )
+}
+
 export default function DaftarHargaModule() {
   const navigate = useNavigate()
   const [hist, setHist] = useState([])
@@ -111,7 +132,7 @@ export default function DaftarHargaModule() {
   const [q, setQ] = useState('')
 
   const [selectMode, setSelectMode] = useState(false)
-  const [selected, setSelected] = useState([]) // isi: id varian
+  const [selected, setSelected] = useState([])
   const [bulkJalur, setBulkJalur] = useState('margin_kongsiapa')
   const [bulkValue, setBulkValue] = useState('')
   const [bulkBusy, setBulkBusy] = useState(false)
@@ -126,7 +147,6 @@ export default function DaftarHargaModule() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  // ratakan jadi satu baris per varian (bukan per batch)
   const rows = useMemo(() => {
     const out = []
     for (const b of hist) {
@@ -208,8 +228,8 @@ export default function DaftarHargaModule() {
       <div className="card">
         <div className="card-head-h">Daftar Harga</div>
         <p className="muted sm" style={{ marginTop: 0 }}>
-          Satu baris per varian. Dobel klik salah satu chip harga untuk edit langsung
-          (margin dan harga saling menghitung otomatis). Tombol Edit membawa ke Kalkulator HPP.
+          Satu baris per varian. Dobel klik chip Kongsiapa/Reseller/Konsinyasi/EC untuk edit
+          langsung. Chip Shopee/TikTok Shop dihitung otomatis dari Kalkulator HPP, edit lewat sana.
         </p>
         <input type="text" className="harga-search" placeholder="Cari nama produk…"
           value={q} onChange={e => setQ(e.target.value)} />
@@ -238,8 +258,8 @@ export default function DaftarHargaModule() {
         <div className="card bulk-margin-card">
           <div className="card-head-h">Ubah Margin Massal</div>
           <p className="muted sm" style={{ marginTop: 0 }}>
-            Berlaku untuk {selected.length} baris terpilih. Cuma mengubah target margin,
-            harga real yang sudah dicatat TIDAK ikut berubah.
+            Berlaku untuk {selected.length} baris terpilih. Cuma jalur Kongsiapa/Reseller/
+            Konsinyasi/EC (bukan Shopee/TikTok). Harga real yang sudah dicatat TIDAK ikut berubah.
           </p>
           <div className="bulk-margin-row">
             <select value={bulkJalur} onChange={e => setBulkJalur(e.target.value)}>
@@ -280,8 +300,10 @@ export default function DaftarHargaModule() {
                 </div>
                 <div className="jalur-chip-row">
                   {JALUR.map(j => (
-                    <JalurChip key={j.key} jalur={j} batch={row.batch} variant={row.variant}
-                      hpp={row.hpp} onSaved={load} />
+                    <JalurChip key={j.key} jalur={j} variant={row.variant} hpp={row.hpp} onSaved={load} />
+                  ))}
+                  {MP_PLATFORMS.map(mp => (
+                    <MpChip key={mp.key} platform={mp} mpData={row.variant[mp.key]} hpp={row.hpp} />
                   ))}
                 </div>
               </div>
