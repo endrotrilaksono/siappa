@@ -43,6 +43,28 @@ export function computeMarketplace(totalHPP, potonganRows, marginKotorPct) {
   return { hargaJual, marginKotorRp, error: null }
 }
 
+// dari harga real -> margin real & untung real (mirip pola calcJalur di hpp.js,
+// dipakai supaya Shopee/TikTok/GrabMart konsisten sama 4 jalur offline)
+export function computeMarketplaceReal(totalHPP, hargaReal) {
+  const hr = nv(hargaReal)
+  if (!(hr > 0)) return { marginReal: null, untungReal: null }
+  const marginReal = ((hr - totalHPP) / hr) * 100
+  const untungReal = hr - totalHPP
+  return { marginReal, untungReal }
+}
+
+// arah balik dari computeMarketplace: dari HARGA JUAL yang mau dicapai,
+// cari MARGIN berapa yang menghasilkan harga itu (dengan potongan yang sama).
+// Dipakai untuk editor dua-arah margin<->harga di Daftar Harga.
+export function marginFromHargaJual(totalHPP, potonganRows, hargaJual) {
+  const hj = nv(hargaJual)
+  if (!(hj > 0)) return null
+  const { pctFrac, rpSum } = sumPotongan(potonganRows)
+  const denom = (totalHPP + rpSum) / hj
+  const marginPct = (1 - pctFrac - denom) * 100
+  return marginPct
+}
+
 // ---------- Gimmick / promo toko / diskon coret, dua arah ----------
 
 // dari diskon% -> harga coret

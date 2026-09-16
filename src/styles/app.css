@@ -665,93 +665,81 @@ input[type="number"],
 .jalur-blok.o .jalur-sec{ color: #c2703c; }
 .out-tbl tr.sec.konsinyasi td{ background: #fdefe4; color: #c2703c; }
 
-/* ============ Marketplace: card berdiri sendiri (bukan accordion lagi) ============ */
-.mp-section-card{
-  margin-top: 14px;
-  border: 1px solid var(--line, #e4e5cf);
-  border-radius: 10px;
-  overflow: hidden;
-  background: #f4f4ff;
-}
-.mp-section-title{
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--primer, #0f1499);
-  border-bottom: 1px solid var(--line, #e4e5cf);
-}
-.mp-body{
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #fff;
-}
 
-.mp-panel{
-  background: #fff;
-  border: 1px solid var(--line, #e4e5cf);
-  border-radius: 9px;
-  padding: 11px 12px;
+/* ============================================================
+   MARKETPLACE v2 — card level produk, potongan dibagi, GrabMart
+   ============================================================
+   INI MENGGANTIKAN CSS Marketplace versi sebelumnya (accordion,
+   mp-section-card lama). Kalau versi lama sempat di-append ke
+   app.css, cari dan hapus dulu (ditandai komentar Marketplace di
+   sana), baru tempel yang ini. Kalau belum pernah, tempel langsung.
+   ============================================================ */
+
+/* card Marketplace level produk, satu per platform, BUKAN nested
+   di dalam card lain (perbaikan dari revisi sebelumnya yang bikin
+   card di dalam card) */
+.mp-product-card{
+  border-left: 4px solid var(--primer, #0f1499);
 }
-.mp-panel-title{ font-size: 12.5px; color: var(--ink, #12143a); display: block; margin-bottom: 8px; }
+.mp-product-card.sp{ border-left-color: #d0421b; }
+.mp-product-card.tt{ border-left-color: #0d5c5c; }
+.mp-product-card.gm{ border-left-color: #00b14f; }
+
+.mp-hint{ margin-top: -4px; }
+
+.mp-potongan-sec-title{
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted, #6b6b6b); margin: 10px 0 6px;
+}
 
 .mp-potongan-list{ display: flex; flex-direction: column; gap: 5px; margin-bottom: 6px; }
-.mp-potongan-row{ display: grid; grid-template-columns: 1fr 70px 52px 22px; gap: 5px; align-items: center; }
+.mp-potongan-row{ display: grid; grid-template-columns: 1fr 90px 60px 24px; gap: 6px; align-items: center; }
 .mp-potongan-row input, .mp-potongan-row select{
-  border: 1px solid var(--line, #e4e5cf);
-  border-radius: 6px;
-  padding: 5px 6px;
-  font-size: 11px;
-  font-family: inherit;
+  border: 1px solid var(--line, #e4e5cf); border-radius: 6px;
+  padding: 6px 7px; font-size: 12px; font-family: inherit;
 }
 .mp-potongan-row input[type="number"]{ text-align: right; font-variant-numeric: tabular-nums; }
-.mp-row-x{
-  border: none; background: transparent; color: var(--warn, #c0392b);
-  font-size: 13px; cursor: pointer; padding: 0;
-}
-.mp-add-row{
-  font-size: 10.5px; font-weight: 700; color: var(--primer, #0f1499);
-  background: transparent; border: none; padding: 2px 0; cursor: pointer;
-}
+.mp-row-x{ border: none; background: transparent; color: var(--warn, #c0392b); font-size: 14px; cursor: pointer; padding: 0; }
+.mp-add-row{ font-size: 11px; font-weight: 700; color: var(--primer, #0f1499); background: transparent; border: none; padding: 4px 0 2px; cursor: pointer; }
 
-.mp-margin-fld{ margin-top: 8px; }
-.mp-margin-fld label{ display: block; font-size: 10px; color: var(--muted, #6b6b6b); margin-bottom: 3px; }
-.mp-margin-fld input{
-  width: 100px; border: 1px solid var(--line, #e4e5cf); border-radius: 6px;
-  padding: 5px 7px; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums;
+.mp-var-rows{
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line, #e4e5cf);
+  display: flex; flex-direction: column; gap: 12px;
 }
-
-.mp-error{
-  margin-top: 8px; font-size: 11px; color: var(--warn, #c0392b);
-  background: var(--warn-soft, #fdeae5); border-radius: 6px; padding: 6px 8px;
+.mp-var-row{
+  background: var(--bg, #f6f6ee); border-radius: 9px; padding: 10px 12px;
 }
+.mp-var-label{ font-size: 11.5px; font-weight: 700; color: var(--ink, #12143a); margin-bottom: 6px; }
 
-.mp-result{
-  margin-top: 10px; background: var(--ok-soft, #e1f5ee); border-radius: 8px; padding: 8px 10px;
+.mp-gimmick-inline{ margin-top: 8px; }
+.mp-gimmick-inline summary{
+  cursor: pointer; font-size: 10.5px; font-weight: 700; color: var(--primer, #0f1499);
+  list-style: none;
 }
-.mp-result-row{ display: flex; justify-content: space-between; font-size: 11px; color: var(--ok, #0f6e56); margin-bottom: 3px; }
-.mp-result-row:last-child{ margin-bottom: 0; }
-.mp-result-row b{ font-variant-numeric: tabular-nums; }
-
-.mp-gimmick{ margin-top: 10px; border-top: 1px dashed var(--line, #e4e5cf); padding-top: 10px; }
-.mp-gimmick-title{ font-size: 10.5px; font-weight: 700; color: var(--muted, #6b6b6b); margin-bottom: 6px; }
-.mp-gimmick-mode{ display: flex; gap: 12px; margin-bottom: 8px; }
+.mp-gimmick-inline summary::-webkit-details-marker{ display: none; }
+.mp-gimmick-inline summary::before{ content: '▸ '; }
+.mp-gimmick-inline[open] summary::before{ content: '▾ '; }
+.mp-gimmick-mode{ display: flex; gap: 12px; margin: 8px 0; }
 .mp-gimmick-mode label{ font-size: 10.5px; display: flex; align-items: center; gap: 4px; }
 .mp-gimmick-fld label{ display: block; font-size: 10px; color: var(--muted, #6b6b6b); margin-bottom: 3px; }
 .mp-gimmick-fld input{
   width: 120px; border: 1px solid var(--line, #e4e5cf); border-radius: 6px;
   padding: 5px 7px; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums;
 }
-.mp-gimmick-result{ margin-top: 8px; font-size: 11.5px; color: var(--ink, #12143a); }
+.mp-gimmick-result{ margin-top: 6px; font-size: 11.5px; color: var(--ink, #12143a); }
 .mp-gimmick-result b{ font-variant-numeric: tabular-nums; color: var(--primer, #0f1499); }
 
-/* warna Konsinyasi (jalur ke-4), jaga-jaga kalau belum ada dari revisi sebelumnya */
+.mp-error{
+  font-size: 11px; color: var(--warn, #c0392b);
+  background: var(--warn-soft, #fdeae5); border-radius: 6px; padding: 6px 8px; margin-bottom: 8px;
+}
+
+/* warna Konsinyasi (jalur ke-4) */
 .o{ color: #c2703c; }
 .jalur-blok.o .jalur-sec{ color: #c2703c; }
 .out-tbl tr.sec.konsinyasi td{ background: #fdefe4; color: #c2703c; }
 
-/* warna Shopee (oranye-merah, beda dari Konsinyasi) dan TikTok (teal gelap) */
+/* warna 3 platform Marketplace di tabel hasil & chip Daftar Harga */
 .sp{ color: #d0421b; }
 .out-tbl tr.sec.sp td{ background: #fde4de; color: #d0421b; }
 .jalur-chip.sp{ background: #fde4de; border-color: #f3bcae; }
@@ -761,3 +749,20 @@ input[type="number"],
 .out-tbl tr.sec.tt td{ background: #e2f2f0; color: #0d5c5c; }
 .jalur-chip.tt{ background: #e2f2f0; border-color: #a9d8d3; }
 .jalur-chip.tt .chip-label{ color: #0d5c5c; }
+
+.gm{ color: #00713a; }
+.out-tbl tr.sec.gm td{ background: #e1f7ea; color: #00713a; }
+.jalur-chip.gm{ background: #e1f7ea; border-color: #a3e0bd; }
+.jalur-chip.gm .chip-label{ color: #00713a; }
+
+/* ============================================================
+   PERBAIKAN ITEM 2: kolom kanan (Hasil Kalkulasi) kelewat lebar,
+   bikin form kalkulator kiri kepotong. Rasio dibalik, kiri lebih
+   lega karena sekarang isinya jauh lebih berat (4 blok jalur +
+   3 card Marketplace penuh editor potongan).
+   ============================================================ */
+@media (min-width: 900px){
+  .hpp-layout{
+    grid-template-columns: 1.3fr 0.7fr !important;
+  }
+}

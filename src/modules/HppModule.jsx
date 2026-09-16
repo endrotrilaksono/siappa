@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'rea
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getHppBatches, createHppBatch, updateHppBatchWithVariants, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
+import { computeMarketplace, computeMarketplaceReal } from '../lib/marketplace'
 import { useUnsavedGuard } from '../lib/unsavedChanges'
-import MarketplacePanel, { emptyMpPanel } from '../components/MarketplacePanel'
-import { computeMarketplace } from '../lib/marketplace'
+import MpPotonganEditor from '../components/MpPotonganEditor'
+import MpVariantRow, { emptyMpVariant } from '../components/MpVariantRow'
 
 const emptyVar = () => ({
   nama_varian: '',
@@ -14,8 +15,20 @@ const emptyVar = () => ({
   margin_mis: '15', harga_real_mis: '',
   margin_konsinyasi: '18', harga_real_konsinyasi: '',
   margin_ec: '25', harga_real: '',
-  mp_shopee: emptyMpPanel(),
-  mp_tiktok: emptyMpPanel(),
+  mp_shopee: emptyMpVariant(),
+  mp_tiktok: emptyMpVariant(),
+  mp_grabmart: emptyMpVariant(),
+})
+
+const defaultPotongan = () => ([
+  { nama: 'Komisi Platform', value: '', format: '%' },
+  { nama: 'Biaya Admin', value: '', format: '%' },
+])
+
+const emptyMpPotongan = () => ({
+  shopee: defaultPotongan(),
+  tiktok: defaultPotongan(),
+  grabmart: defaultPotongan(),
 })
 
 const JALUR = [
@@ -23,6 +36,12 @@ const JALUR = [
   { key: 'reseller', label: 'Reseller', sub: '', marginField: 'margin_mis', realField: 'harga_real_mis', cls: '' },
   { key: 'konsinyasi', label: 'Konsinyasi', sub: '', marginField: 'margin_konsinyasi', realField: 'harga_real_konsinyasi', cls: 'o' },
   { key: 'ec', label: 'End Customer', sub: '', marginField: 'margin_ec', realField: 'harga_real', cls: 'g' },
+]
+
+const MP_PLATFORMS = [
+  { key: 'shopee', varField: 'mp_shopee', label: 'Shopee', cls: 'sp' },
+  { key: 'tiktok', varField: 'mp_tiktok', label: 'TikTok Shop', cls: 'tt' },
+  { key: 'grabmart', varField: 'mp_grabmart', label: 'GrabMart', cls: 'gm' },
 ]
 
 const fdtShort = ts => new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -69,6 +88,7 @@ export default function HppModule() {
   const { setDirty } = useUnsavedGuard()
   const [base, setBase] = useState({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
   const [vars, setVars] = useState([emptyVar(), emptyVar()])
+  const [mpPotongan, setMpPotongan] = useState(emptyMpPotongan())
   const [hist, setHist] = useState([])
   const [components, setComponents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -83,7 +103,7 @@ export default function HppModule() {
     if (skipDirtyRef.current) { skipDirtyRef.current = false; return }
     setDirty(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, vars])
+  }, [base, vars, mpPotongan])
 
   useEffect(() => {
     function handler(e) {
@@ -138,6 +158,9 @@ export default function HppModule() {
       const batchPayload = {
         nama_produk: base.nama_produk || 'Tanpa nama',
         total_kg: nv(base.total_kg), harga_ikan: nv(base.harga_ikan), biaya_bumbu: nv(base.biaya_bumbu),
+        mp_shopee_potongan: mpPotongan.shopee,
+        mp_tiktok_potongan: mpPotongan.tiktok,
+        mp_grabmart_potongan: mpPotongan.grabmart,
       }
       const variantsPayload = vars.map(v => ({
         nama_varian: v.nama_varian || null,
@@ -147,8 +170,9 @@ export default function HppModule() {
         margin_mis: nv(v.margin_mis), harga_real_mis: nv(v.harga_real_mis),
         margin_konsinyasi: nv(v.margin_konsinyasi), harga_real_konsinyasi: nv(v.harga_real_konsinyasi),
         margin_ec: nv(v.margin_ec), harga_real: nv(v.harga_real),
-        mp_shopee: v.mp_shopee || emptyMpPanel(),
-        mp_tiktok: v.mp_tiktok || emptyMpPanel(),
+        mp_shopee: v.mp_shopee || emptyMpVariant(),
+        mp_tiktok: v.mp_tiktok || emptyMpVariant(),
+        mp_grabmart: v.mp_grabmart || emptyMpVariant(),
       }))
 
       if (editingBatchId) {
@@ -170,6 +194,7 @@ export default function HppModule() {
     setEditingBatchId(null)
     setBase({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
     setVars([emptyVar(), emptyVar()])
+    setMpPotongan(emptyMpPotongan())
     flash('Form dikosongkan, siap hitung produk baru')
   }
 
@@ -181,6 +206,11 @@ export default function HppModule() {
       nama_produk: b.nama_produk || '',
       total_kg: b.total_kg ?? '', harga_ikan: b.harga_ikan ?? '', biaya_bumbu: b.biaya_bumbu ?? '0',
     })
+    setMpPotongan({
+      shopee: (b.mp_shopee_potongan && b.mp_shopee_potongan.length) ? b.mp_shopee_potongan : defaultPotongan(),
+      tiktok: (b.mp_tiktok_potongan && b.mp_tiktok_potongan.length) ? b.mp_tiktok_potongan : defaultPotongan(),
+      grabmart: (b.mp_grabmart_potongan && b.mp_grabmart_potongan.length) ? b.mp_grabmart_potongan : defaultPotongan(),
+    })
     setVars((b.hpp_variants || []).length ? b.hpp_variants.map(v => ({
       nama_varian: v.nama_varian || '',
       ukuran_target: v.ukuran_target ?? '', jumlah_pack: v.jumlah_pack ?? '', kelebihan: v.kelebihan ?? '',
@@ -189,18 +219,17 @@ export default function HppModule() {
       margin_mis: v.margin_mis ?? '15', harga_real_mis: v.harga_real_mis ?? '',
       margin_konsinyasi: v.margin_konsinyasi ?? '18', harga_real_konsinyasi: v.harga_real_konsinyasi ?? '',
       margin_ec: v.margin_ec ?? '25', harga_real: v.harga_real ?? '',
-      mp_shopee: v.mp_shopee || emptyMpPanel(),
-      mp_tiktok: v.mp_tiktok || emptyMpPanel(),
+      mp_shopee: (v.mp_shopee && !v.mp_shopee.potongan) ? v.mp_shopee : emptyMpVariant(),
+      mp_tiktok: (v.mp_tiktok && !v.mp_tiktok.potongan) ? v.mp_tiktok : emptyMpVariant(),
+      mp_grabmart: v.mp_grabmart || emptyMpVariant(),
     })) : [emptyVar()])
     window.scrollTo({ top: 0, behavior: 'smooth' })
     flash('Data batch dimuat ke form')
   }
 
   const ready = R.mo > 0 && R.tg > 0
-  const anyMpFilled = vars.some((v, i) =>
-    ['mp_shopee', 'mp_tiktok'].some(k => computeMarketplace(R.C[i]?.hpp || 0, (v[k] || {}).potongan, (v[k] || {}).marginKotor).hargaJual !== null)
-  )
-  const anyRealFilled = R.C.some(c => JALUR.some(j => c.jalur[j.key].real > 0)) || anyMpFilled
+  const anyRealFilled = R.C.some(c => JALUR.some(j => c.jalur[j.key].real > 0)) ||
+    vars.some(v => MP_PLATFORMS.some(mp => nv((v[mp.varField] || {}).hargaReal) > 0))
 
   return (
     <div className="hpp">
@@ -316,22 +345,37 @@ export default function HppModule() {
                     </div>
                   )
                 })}
-
-                <div className="mp-section-card">
-                  <div className="mp-section-title">Marketplace (Shopee, TikTok Shop)</div>
-                  <div className="mp-body">
-                    <MarketplacePanel label="Shopee" hpp={c ? c.hpp : 0}
-                      value={v.mp_shopee} onChange={val => setV(i, 'mp_shopee', val)} />
-                    <MarketplacePanel label="TikTok Shop" hpp={c ? c.hpp : 0}
-                      value={v.mp_tiktok} onChange={val => setV(i, 'mp_tiktok', val)} />
-                  </div>
-                </div>
               </div>
             )
           })}
         </div>
         <button className="btn-ghost-dark" onClick={addVar}>+ Tambah Varian</button>
       </div>
+
+      {MP_PLATFORMS.map(mp => (
+        <div className={`card mp-product-card ${mp.cls}`} key={mp.key}>
+          <div className="card-head-h">{mp.label}</div>
+          <p className="muted sm mp-hint">
+            Potongan platform berlaku sama untuk semua varian di bawah. Kalau produk ini
+            tidak dijual di {mp.label}, biarkan saja kosong.
+          </p>
+
+          <div className="mp-potongan-sec-title">Potongan {mp.label}</div>
+          <MpPotonganEditor rows={mpPotongan[mp.key]}
+            onChange={rows => setMpPotongan(p => ({ ...p, [mp.key]: rows }))} />
+
+          <div className="mp-var-rows">
+            {vars.map((v, i) => (
+              <MpVariantRow key={i}
+                label={v.nama_varian || `Varian ${i + 1}`}
+                value={v[mp.varField]}
+                onChange={val => setV(i, mp.varField, val)}
+                hpp={R.C[i] ? R.C[i].hpp : 0}
+                potongan={mpPotongan[mp.key]} />
+            ))}
+          </div>
+        </div>
+      ))}
 
       {editingBatchId && (
         <div className="editing-banner">
@@ -448,12 +492,9 @@ export default function HppModule() {
                   )
                 })}
 
-                {[
-                  { key: 'mp_shopee', label: 'Shopee', cls: 'sp' },
-                  { key: 'mp_tiktok', label: 'TikTok Shop', cls: 'tt' },
-                ].map(mp => {
-                  const results = vars.map((v, i) => computeMarketplace(R.C[i].hpp, (v[mp.key] || {}).potongan, (v[mp.key] || {}).marginKotor))
-                  const anyFilled = results.some(r => r.hargaJual !== null)
+                {MP_PLATFORMS.map(mp => {
+                  const results = vars.map((v, i) => computeMarketplaceReal(R.C[i].hpp, (v[mp.varField] || {}).hargaReal))
+                  const anyFilled = results.some(r => r.untungReal !== null)
                   if (!anyFilled) return null
                   return (
                     <Fragment key={mp.key}>
@@ -461,16 +502,30 @@ export default function HppModule() {
                         <td colSpan={vars.length + 1}>Harga ke {mp.label}</td>
                       </tr>
                       <tr className="tot">
-                        <td>Harga jual disarankan</td>
-                        {results.map((r, i) => <td key={i} className={mp.cls}>{r.hargaJual !== null ? rp(r.hargaJual) : '—'}</td>)}
+                        <td>Harga</td>
+                        {vars.map((v, i) => {
+                          const hr = nv((v[mp.varField] || {}).hargaReal)
+                          return <td key={i} className={mp.cls}>{hr > 0 ? rp(hr) : '—'}</td>
+                        })}
                       </tr>
                       <tr>
-                        <td>Margin kotor (Rp)</td>
+                        <td>Margin</td>
                         {results.map((r, i) => (
-                          <td key={i} className={r.marginKotorRp !== null ? (r.marginKotorRp > 0 ? 'g' : 'r') : ''}>
-                            {r.marginKotorRp !== null ? rp(r.marginKotorRp) : '—'}
-                          </td>
+                          <td key={i} className={r.marginReal !== null ? marginClass(r.marginReal) : ''}>{r.marginReal !== null ? pc(r.marginReal) : '—'}</td>
                         ))}
+                      </tr>
+                      <tr>
+                        <td>Untung / pack</td>
+                        {results.map((r, i) => (
+                          <td key={i} className={r.untungReal !== null ? (r.untungReal > 0 ? 'g' : 'r') : ''}>{r.untungReal !== null ? rp(r.untungReal) : '—'}</td>
+                        ))}
+                      </tr>
+                      <tr className="tot">
+                        <td>Untung total batch</td>
+                        {results.map((r, i) => {
+                          const total = r.untungReal !== null ? r.untungReal * nv(vars[i].jumlah_pack) : null
+                          return <td key={i} className={total !== null ? (total > 0 ? 'g' : 'r') : ''}>{total !== null ? rp(total) : '—'}</td>
+                        })}
                       </tr>
                     </Fragment>
                   )
