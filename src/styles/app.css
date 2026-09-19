@@ -789,27 +789,74 @@ input[type="number"],
   border-top: 1px solid var(--line, #e4e5cf);
 }
 
-/* ============ Channel Penjualan ============ */
-.cp-channel-row{
-  display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
-}
-.cp-arrow{ font-size: 18px; color: var(--primer, #0f1499); padding-bottom: 8px; }
 
-.cp-rows{ display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+/* ============ Channel Penjualan v2: pencarian, harga per baris, panah sejajar, hasil otomatis ============ */
+.cp-channel-row{
+  display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap;
+}
+
+/* Kolom panah dibuat CERMIN struktur .fld (label lalu kontrol), label-nya
+   kosong tapi tetap ada (&nbsp;) supaya tinggi barisnya identik dengan
+   kolom Dari/Ke. Panahnya lalu ditaruh di baris kedua yang otomatis
+   sejajar tinggi dengan select, TANPA perlu angka padding tebakan. */
+.cp-arrow-col{ display: flex; flex-direction: column; }
+.cp-arrow-col label{
+  font-size: 11px; font-weight: 700; color: transparent; margin-bottom: 4px;
+  user-select: none;
+}
+.cp-arrow-col .cp-arrow{
+  height: 38px; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--primer, #0f1499); line-height: 1;
+}
+
+.cp-head-row{
+  display: grid; grid-template-columns: 1.6fr 60px 100px 110px 22px; gap: 8px;
+  font-size: 9.5px; font-weight: 800; color: var(--muted, #8a8a8a);
+  text-transform: uppercase; letter-spacing: .03em; padding: 0 2px 4px;
+}
+.cp-head-row span:nth-child(2), .cp-head-row span:nth-child(3), .cp-head-row span:nth-child(4){
+  text-align: right;
+}
+
+.cp-rows{ display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.cp-row-wrap{ border-radius: 8px; overflow: visible; }
 .cp-row{
-  display: grid; grid-template-columns: 1fr 90px 28px; gap: 8px; align-items: center;
-  padding: 6px; border-radius: 8px;
+  display: grid; grid-template-columns: 1.6fr 60px 100px 110px 22px; gap: 8px; align-items: center;
+  padding: 4px; border-radius: 8px;
 }
 .cp-row.warn{ background: var(--warn-soft, #fdeae5); }
-.cp-row select, .cp-row input{
+.cp-row input{
+  border: 1px solid var(--line, #e4e5cf); border-radius: 6px;
+  padding: 7px 8px; font-size: 12.5px; font-family: inherit; width: 100%; box-sizing: border-box;
+}
+.cp-row input[type="number"]{ text-align: right; font-variant-numeric: tabular-nums; }
+.cp-harga{
+  font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--ink, #12143a); font-weight: 700;
+}
+.cp-row-warn{
+  font-size: 10.5px; color: var(--warn, #c0392b); padding: 2px 4px 4px;
+}
+
+/* pencarian varian, ketik untuk saring */
+.cp-picker{ position: relative; }
+.cp-picker input{
+  width: 100%; box-sizing: border-box;
   border: 1px solid var(--line, #e4e5cf); border-radius: 6px;
   padding: 7px 8px; font-size: 12.5px; font-family: inherit;
 }
-.cp-row input[type="number"]{ text-align: right; font-variant-numeric: tabular-nums; }
-.cp-row-warn{
-  grid-column: 1 / -1;
-  font-size: 10.5px; color: var(--warn, #c0392b);
+.cp-picker input:focus{ border-color: var(--primer, #0f1499); }
+.cp-picker-list{
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid var(--primer, #0f1499); border-top: none;
+  border-radius: 0 0 8px 8px; max-height: 220px; overflow-y: auto;
+  box-shadow: 0 8px 18px rgba(15,20,60,.14);
 }
+.cp-picker-item{
+  padding: 7px 10px; font-size: 12px; cursor: pointer;
+}
+.cp-picker-item:hover{ background: #f4f4ff; color: var(--primer, #0f1499); }
+.cp-picker-empty{ padding: 8px 10px; font-size: 11.5px; color: var(--muted, #8a8a8a); font-style: italic; }
 
 .cp-blocker{ margin-top: 4px; }
 

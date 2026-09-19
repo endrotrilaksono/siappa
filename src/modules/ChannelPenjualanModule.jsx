@@ -4,8 +4,6 @@ import { rp, nv } from '../lib/hpp'
 
 const CHANNEL_LABELS = { ibusiapa: 'Ibu Siapa', kongsiapa: 'Kongsiapa', konsinyasi: 'Konsinyasi', reseller: 'Reseller' }
 
-// asal -> daftar tujuan yang valid. Kongsiapa tidak boleh jadi tujuan
-// dari dirinya sendiri, dan Ibu Siapa (HPP) tidak pernah jadi tujuan.
 const DESTINATIONS = {
   ibusiapa: ['kongsiapa', 'konsinyasi', 'reseller'],
   kongsiapa: ['konsinyasi', 'reseller'],
@@ -22,7 +20,6 @@ function hppVarian(batch, variant) {
   return hI + hK
 }
 
-// ambil harga varian di channel tertentu. null = belum diisi/tidak ada.
 function hargaDiChannel(channelKey, row) {
   if (!row) return null
   if (channelKey === 'ibusiapa') return row.hpp > 0 ? row.hpp : null
@@ -35,6 +32,43 @@ function hargaDiChannel(channelKey, row) {
 
 const emptyRow = () => ({ variantId: '', qty: '' })
 
+// ---------- Pencarian varian, ketik untuk saring ----------
+function VariantPicker({ value, variantList, onChange }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const selected = variantList.find(v => v.id === value)
+
+  const filtered = useMemo(() => {
+    const qq = query.trim().toLowerCase()
+    const base = qq ? variantList.filter(v => v.label.toLowerCase().includes(qq)) : variantList
+    return base.slice(0, 30)
+  }, [query, variantList])
+
+  return (
+    <div className="cp-picker">
+      <input
+        type="text"
+        placeholder="Cari varian…"
+        value={open ? query : (selected ? selected.label : '')}
+        onFocus={() => { setOpen(true); setQuery('') }}
+        onChange={e => setQuery(e.target.value)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {open && (
+        <div className="cp-picker-list">
+          {filtered.length === 0 && <div className="cp-picker-empty">Tidak ketemu</div>}
+          {filtered.map(v => (
+            <div key={v.id} className="cp-picker-item"
+              onMouseDown={() => { onChange(v.id); setOpen(false) }}>
+              {v.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ChannelPenjualanModule() {
   const [hist, setHist] = useState([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +77,6 @@ export default function ChannelPenjualanModule() {
   const [asal, setAsal] = useState('ibusiapa')
   const [tujuan, setTujuan] = useState('kongsiapa')
   const [rows, setRows] = useState([emptyRow()])
-  const [hasil, setHasil] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -53,7 +86,6 @@ export default function ChannelPenjualanModule() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  // daftar varian datar, sama pola seperti Daftar Harga
   const variantList = useMemo(() => {
     const out = []
     for (const b of hist) {
@@ -74,47 +106,41 @@ export default function ChannelPenjualanModule() {
     return m
   }, [variantList])
 
-  // begitu asal berganti, pastikan tujuan tetap salah satu opsi yang valid
   function changeAsal(v) {
     setAsal(v)
-    setHasil(null)
     if (!DESTINATIONS[v].includes(tujuan)) setTujuan(DESTINATIONS[v][0])
   }
-  function changeTujuan(v) { setTujuan(v); setHasil(null) }
 
-  function setRow(i, patch) {
-    setRows(rs => rs.map((r, idx) => idx === i ? { ...r, ...patch } : r))
-    setHasil(null)
-  }
-  function addRow() { setRows(rs => [...rs, emptyRow()]); setHasil(null) }
-  function delRow(i) { setRows(rs => rs.length > 1 ? rs.filter((_, idx) => idx !== i) : rs); setHasil(null) }
+  function setRow(i, patch) { setRows(rs => rs.map((r, idx) => idx === i ? { ...r, ...patch } : r)) }
+  function addRow() { setRows(rs => [...rs, emptyRow()]) }
+  function delRow(i) { setRows(rs => rs.length > 1 ? rs.filter((_, idx) => idx !== i) : rs) }
 
-  // evaluasi tiap baris: harga asal, harga tujuan, dan apakah lengkap
   const evaluated = rows.map(r => {
     const row = r.variantId ? variantMap.get(r.variantId) : null
     if (!row) return { ...r, row: null, hargaAsal: null, hargaTujuan: null, lengkap: false }
     const hargaAsal = hargaDiChannel(asal, row)
     const hargaTujuan = hargaDiChannel(tujuan, row)
     const qtyValid = nv(r.qty) > 0
-    return {
-      ...r, row, hargaAsal, hargaTujuan,
-      lengkap: hargaAsal !== null && hargaTujuan !== null && qtyValid,
-    }
+    return { ...r, row, hargaAsal, hargaTujuan, lengkap: hargaAsal !== null && hargaTujuan !== null && qtyValid }
   })
 
-  const adaBarisKosong = rows.some(r => !r.variantId)
-  const semuaLengkap = evaluated.length > 0 && !adaBarisKosong && evaluated.every(r => r.lengkap)
+  const adaBarisTerisi = rows.some(r => r.variantId)
+  const semuaLengkap = evaluated.length > 0 && adaBarisTerisi && evaluated.every(r => r.lengkap)
 
-  function hitungTotal() {
-    if (!semuaLengkap) return
+  // Hasil dihitung LANGSUNG (tidak perlu tombol), cuma tampil begitu
+  // semua baris lengkap. Kalau ada yang belum, hasil disembunyikan,
+  // bukan ditampilkan sebagai 0 yang menyesatkan.
+  const hasil = useMemo(() => {
+    if (!semuaLengkap) return null
     let penjualan = 0, modal = 0
     evaluated.forEach(r => {
       const q = nv(r.qty)
       penjualan += r.hargaTujuan * q
       modal += r.hargaAsal * q
     })
-    setHasil({ penjualan, modal, untung: penjualan - modal })
-  }
+    return { penjualan, modal, untung: penjualan - modal }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [semuaLengkap, JSON.stringify(rows), asal, tujuan])
 
   return (
     <div className="hpp">
@@ -124,6 +150,10 @@ export default function ChannelPenjualanModule() {
           Hitung total keuntungan dari satu channel ke channel lain, buat beberapa produk sekaligus.
         </p>
 
+        {/* Struktur Dari/Panah/Ke sengaja dibuat CERMIN satu sama lain
+            (label kosong di atas panah, sejajar label Dari/Ke), supaya
+            panahnya PASTI sejajar sama select-nya, bukan diatur pakai
+            angka jarak yang gampang meleset. */}
         <div className="cp-channel-row">
           <div className="fld">
             <label>Dari</label>
@@ -131,10 +161,13 @@ export default function ChannelPenjualanModule() {
               {ORIGINS.map(o => <option key={o} value={o}>{CHANNEL_LABELS[o]}</option>)}
             </select>
           </div>
-          <div className="cp-arrow">→</div>
+          <div className="cp-arrow-col">
+            <label>&nbsp;</label>
+            <div className="cp-arrow">→</div>
+          </div>
           <div className="fld">
             <label>Ke</label>
-            <select value={tujuan} onChange={e => changeTujuan(e.target.value)}>
+            <select value={tujuan} onChange={e => setTujuan(e.target.value)}>
               {DESTINATIONS[asal].map(t => <option key={t} value={t}>{CHANNEL_LABELS[t]}</option>)}
             </select>
           </div>
@@ -146,16 +179,21 @@ export default function ChannelPenjualanModule() {
         {error && <div className="err-banner">Error: {error}</div>}
         {loading ? <div className="loading">Memuat…</div> : (
           <>
+            <div className="cp-head-row">
+              <span>Varian</span><span>Qty</span><span>Harga satuan</span><span>Harga total</span><span></span>
+            </div>
             <div className="cp-rows">
               {evaluated.map((r, i) => (
-                <div className={`cp-row ${r.variantId && !r.lengkap ? 'warn' : ''}`} key={i}>
-                  <select value={r.variantId} onChange={e => setRow(i, { variantId: e.target.value })}>
-                    <option value="">— pilih varian —</option>
-                    {variantList.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-                  </select>
-                  <input type="number" placeholder="Qty" value={r.qty}
-                    onChange={e => setRow(i, { qty: e.target.value })} />
-                  <button className="var-x" onClick={() => delRow(i)}>✕</button>
+                <div className="cp-row-wrap" key={i}>
+                  <div className={`cp-row ${r.variantId && !r.lengkap ? 'warn' : ''}`}>
+                    <VariantPicker value={r.variantId} variantList={variantList}
+                      onChange={id => setRow(i, { variantId: id })} />
+                    <input type="number" placeholder="0" value={r.qty}
+                      onChange={e => setRow(i, { qty: e.target.value })} />
+                    <div className="cp-harga">{r.hargaTujuan !== null ? rp(r.hargaTujuan) : '—'}</div>
+                    <div className="cp-harga">{r.hargaTujuan !== null && nv(r.qty) > 0 ? rp(r.hargaTujuan * nv(r.qty)) : '—'}</div>
+                    <button className="var-x" onClick={() => delRow(i)}>✕</button>
+                  </div>
                   {r.variantId && !r.lengkap && (
                     <div className="cp-row-warn">
                       {r.hargaAsal === null && <>Harga di {CHANNEL_LABELS[asal]} belum diisi. </>}
@@ -171,18 +209,12 @@ export default function ChannelPenjualanModule() {
         )}
       </div>
 
-      {!semuaLengkap && rows.some(r => r.variantId) && (
+      {!semuaLengkap && adaBarisTerisi && (
         <div className="mp-error cp-blocker">
           Ada produk yang harganya belum lengkap di salah satu channel, atau kuantitasnya belum diisi.
-          Lengkapi dulu semua baris sebelum bisa menghitung total.
+          Total baru muncul kalau semua baris sudah lengkap.
         </div>
       )}
-
-      <div className="hpp-actions">
-        <button className="btn-primary" onClick={hitungTotal} disabled={!semuaLengkap}>
-          Hitung Total
-        </button>
-      </div>
 
       {hasil && (
         <div className="card cp-hasil">
