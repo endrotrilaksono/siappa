@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { getHppBatches, createHppBatch, updateHppBatchWithVariants, deleteHppBatch, importHppLegacy, getHppComponents } from '../lib/api'
 import { calcHpp, rp, gr, pc, nv, yieldClass, marginClass } from '../lib/hpp'
 import { computeMarketplace, computeMarketplaceReal } from '../lib/marketplace'
@@ -83,8 +83,7 @@ function findHargaTerakhir(hist, namaProduk, ukuranTarget, realField) {
 }
 
 export default function HppModule() {
-  const location = useLocation()
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { setDirty } = useUnsavedGuard()
   const [base, setBase] = useState({ nama_produk: '', total_kg: '', harga_ikan: '', biaya_bumbu: '0' })
   const [vars, setVars] = useState([emptyVar(), emptyVar()])
@@ -130,15 +129,15 @@ export default function HppModule() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    const wantedId = location.state?.loadBatchId
+    const wantedId = searchParams.get('batchId')
     if (!wantedId || hist.length === 0) return
     const found = hist.find(b => b.id === wantedId)
     if (found) {
       loadBatch(found)
-      navigate(location.pathname, { replace: true, state: {} })
+      setSearchParams({}, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hist, location.state])
+  }, [hist, searchParams])
 
   const namaProdukList = useMemo(() => {
     const set = new Set()

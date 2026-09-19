@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useUnsavedGuard } from '../lib/unsavedChanges'
 
 const MODULES = [
-  { path: '/hpp', label: 'HPP', desc: 'Kalkulator batch & harga jual', icon: '🧮' },
-  { path: '/komponen', label: 'Komponen HPP', desc: 'Master kemasan & harga', icon: '📦' },
   { path: '/harga', label: 'Daftar Harga', desc: 'Harga terbaru tiap varian', icon: '💰' },
+  { path: '/hpp', label: 'HPP', desc: 'Kalkulator batch & harga jual', icon: '🧮' },
+  { path: '/channel', label: 'Channel Penjualan', desc: 'Untung lintas channel, multi produk', icon: '🔀' },
+  { path: '/komponen', label: 'Komponen HPP', desc: 'Master kemasan & harga', icon: '📦' },
 ]
 
 export default function Sidebar({ open, onClose }) {
@@ -19,9 +20,16 @@ export default function Sidebar({ open, onClose }) {
     return () => window.removeEventListener('keydown', h)
   }, [open, onClose])
 
-  function go(path) {
+  // Link sungguhan (bukan tombol), supaya klik kanan "buka di tab baru",
+  // Cmd/Ctrl-klik, dan klik tengah mouse semuanya jalan alami lewat
+  // browser tanpa kita utak-atik. Yang KITA cegat cuma klik kiri polos
+  // tanpa modifier, itu yang perlu lewat pemeriksaan perubahan belum
+  // simpan dulu sebelum pindah tab yang sama.
+  function handleClick(e, path) {
+    const isModified = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0
+    if (isModified) return // biarkan browser yang urus (tab baru, dst)
+    e.preventDefault()
     onClose()
-    if (path === location.pathname) return
     requestNavigate(path)
   }
 
@@ -39,17 +47,18 @@ export default function Sidebar({ open, onClose }) {
 
         <nav className="sb-nav">
           {MODULES.map(m => (
-            <button
+            <NavLink
               key={m.path}
+              to={m.path}
+              onClick={e => handleClick(e, m.path)}
               className={`sb-item ${location.pathname === m.path ? 'on' : ''}`}
-              onClick={() => go(m.path)}
             >
               <span className="sb-ico">{m.icon}</span>
               <span className="sb-txt">
                 <span className="sb-lbl">{m.label}</span>
                 <span className="sb-desc">{m.desc}</span>
               </span>
-            </button>
+            </NavLink>
           ))}
         </nav>
 

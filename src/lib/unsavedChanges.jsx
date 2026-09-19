@@ -1,9 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-// Context ini dipasang sekali di App.jsx (Shell), dipakai HppModule buat
-// nandain "ada perubahan belum disimpan", dan dipakai Sidebar buat nanya
-// dulu sebelum pindah halaman kalau memang lagi ada yang belum disimpan.
 const UnsavedCtx = createContext(null)
 
 export function UnsavedChangesProvider({ children }) {
@@ -12,11 +9,8 @@ export function UnsavedChangesProvider({ children }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const pendingPath = useRef(null)
 
-  // dipanggil komponen (mis. HppModule) tiap kali form berubah
   const setDirty = useCallback((v) => setIsDirty(v), [])
 
-  // dipanggil sebelum pindah halaman (mis. klik sidebar). Kalau tidak
-  // ada perubahan, langsung pindah. Kalau ada, tampilkan dialog dulu.
   const requestNavigate = useCallback((path) => {
     if (!isDirty) { navigate(path); return }
     pendingPath.current = path

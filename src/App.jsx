@@ -4,11 +4,12 @@ import Sidebar from './components/Sidebar'
 import HppModule from './modules/HppModule'
 import KomponenHppModule from './modules/KomponenHppModule'
 import DaftarHargaModule from './modules/DaftarHargaModule'
+import ChannelPenjualanModule from './modules/ChannelPenjualanModule'
 import AuthGate from './components/AuthGate'
 import { hasCredentials } from './lib/supabase'
 import { UnsavedChangesProvider } from './lib/unsavedChanges'
 
-const TITLES = { '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP', '/harga': 'Daftar Harga' }
+const TITLES = { '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP', '/harga': 'Daftar Harga', '/channel': 'Channel Penjualan' }
 
 function Shell({ signOut }) {
   const [sbOpen, setSbOpen] = useState(false)
@@ -40,15 +41,17 @@ function Shell({ signOut }) {
           </div>
         )}
         <Routes>
-          <Route path="/" element={<Navigate to="/hpp" replace />} />
+          {/* Halaman default sekarang Daftar Harga, bukan Kalkulator HPP */}
+          <Route path="/" element={<Navigate to="/harga" replace />} />
           <Route path="/hpp" element={<div className="body"><HppModule /></div>} />
           <Route path="/komponen" element={<div className="body"><KomponenHppModule /></div>} />
           <Route path="/harga" element={<div className="body"><DaftarHargaModule /></div>} />
+          <Route path="/channel" element={<div className="body"><ChannelPenjualanModule /></div>} />
           {/* tab Konten sengaja dilepas dari navigasi. Datanya TETAP AMAN
               di Supabase (tabel contents/content_parts tidak disentuh),
               cuma pintu masuknya di app yang dicabut. Gampang dipasang
               lagi kalau suatu saat dibutuhkan lagi. */}
-          <Route path="*" element={<Navigate to="/hpp" replace />} />
+          <Route path="*" element={<Navigate to="/harga" replace />} />
         </Routes>
       </main>
     </div>

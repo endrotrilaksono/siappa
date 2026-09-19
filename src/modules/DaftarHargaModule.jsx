@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getHppBatches, deleteHppVariant, updateHppVariant } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { rp, pc, nv } from '../lib/hpp'
-import { computeMarketplace, marginFromHargaJual } from '../lib/marketplace'
+import { computeMarketplace, computeMarketplaceReal, marginFromHargaJual } from '../lib/marketplace'
 
 const JALUR = [
   { key: 'kongsiapa', label: 'Kongsiapa', marginField: 'margin_kongsiapa', realField: 'harga_real_kongsiapa' },
@@ -119,8 +119,9 @@ function MpChip({ platform, batch, variant, hpp, onSaved }) {
   const mpData = variant[platform.varField] || {}
   const margin = nv(mpData.marginKotor)
   const harga = nv(mpData.hargaReal)
-  const marginReal = harga > 0 ? ((harga - hpp) / harga) * 100 : null
-  const untung = harga > 0 ? harga - hpp : null
+  const realCalc = computeMarketplaceReal(hpp, harga)
+  const marginReal = realCalc.marginReal
+  const untung = realCalc.untungReal
 
   function startEdit() {
     setMarginVal(String(margin || ''))
@@ -197,12 +198,12 @@ function MpChip({ platform, batch, variant, hpp, onSaved }) {
 }
 
 export default function DaftarHargaModule() {
-  const navigate = useNavigate()
   const [hist, setHist] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState('')
   const [q, setQ] = useState('')
+  const [expanded, setExpanded] = useState(() => new Set())
 
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState([])
@@ -244,8 +245,14 @@ export default function DaftarHargaModule() {
     )
   }, [rows, q])
 
-  function editBatch(batch) {
-    navigate('/hpp', { state: { loadBatchId: batch.id } })
+  // Accordion: bisa banyak baris kebuka bersamaan, tertutup default.
+  // Diklik pada header baris, bukan pada checkbox/tombol Edit/Hapus.
+  function toggleExpand(id) {
+    setExpanded(s => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
   }
 
   async function removeVariant(row) {
@@ -355,31 +362,36 @@ export default function DaftarHargaModule() {
           </div>
         : filtered.map(row => {
             const rowKey = row.variant.id
+            const isOpen = expanded.has(rowKey)
             return (
               <div className="card harga-row2" key={rowKey}>
-                <div className="harga-row2-top">
+                <div className="harga-row2-top" onClick={() => toggleExpand(rowKey)}>
+                  <span className={`accordion-caret ${isOpen ? 'open' : ''}`}>▸</span>
                   {selectMode && (
-                    <input type="checkbox" checked={selected.includes(rowKey)} onChange={() => toggleSelect(rowKey)} />
+                    <input type="checkbox" checked={selected.includes(rowKey)}
+                      onClick={e => e.stopPropagation()} onChange={() => toggleSelect(rowKey)} />
                   )}
                   <div className="harga-row2-title">
                     <b>{row.variant.nama_varian || `${row.batch.nama_produk} ${row.variant.ukuran_target}g`}</b>
                     <span className="muted sm"> · HPP {rp(row.hpp)}</span>
                   </div>
                   {!selectMode && (
-                    <div className="harga-row2-actions">
-                      <button className="link-btn" onClick={() => editBatch(row.batch)}>Edit</button>
+                    <div className="harga-row2-actions" onClick={e => e.stopPropagation()}>
+                      <Link className="link-btn" to={`/hpp?batchId=${row.batch.id}`}>Edit</Link>
                       <button className="link-btn del" onClick={() => removeVariant(row)}>Hapus</button>
                     </div>
                   )}
                 </div>
-                <div className="jalur-chip-row">
-                  {JALUR.map(j => (
-                    <JalurChip key={j.key} jalur={j} variant={row.variant} hpp={row.hpp} onSaved={load} />
-                  ))}
-                  {MP_PLATFORMS.map(mp => (
-                    <MpChip key={mp.key} platform={mp} batch={row.batch} variant={row.variant} hpp={row.hpp} onSaved={load} />
-                  ))}
-                </div>
+                {isOpen && (
+                  <div className="jalur-chip-row">
+                    {JALUR.map(j => (
+                      <JalurChip key={j.key} jalur={j} variant={row.variant} hpp={row.hpp} onSaved={load} />
+                    ))}
+                    {MP_PLATFORMS.map(mp => (
+                      <MpChip key={mp.key} platform={mp} batch={row.batch} variant={row.variant} hpp={row.hpp} onSaved={load} />
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}
