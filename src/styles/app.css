@@ -869,3 +869,69 @@ input[type="number"],
 .cp-hasil-row b{ font-variant-numeric: tabular-nums; }
 .cp-hasil-total{ font-weight: 800; font-size: 15px; padding-top: 12px; }
 .cp-hasil-total b{ font-size: 17px; }
+
+/* ============ Mitra Titip ============ */
+.mitra-badge{
+  font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 99px;
+  margin-left: 8px; text-transform: uppercase; letter-spacing: .03em;
+}
+.mitra-badge.konsinyasi{ background: #f3e8ff; color: #7c3aed; }
+.mitra-badge.end_user{ background: #e1f5ee; color: #0f6e56; }
+
+.mitra-row{
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; cursor: pointer;
+}
+.mitra-row:hover{ border-color: var(--primer, #0f1499); }
+
+.mitra-actions{ display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+
+.mitra-form{
+  background: var(--bg, #f6f6ee); border-radius: 9px; padding: 12px;
+  margin-top: 10px; display: flex; flex-direction: column; gap: 8px;
+}
+
+.mitra-warn{
+  font-size: 11.5px; color: var(--warn, #c0392b);
+  background: var(--warn-soft, #fdeae5); border-radius: 6px; padding: 8px 10px;
+}
+.mitra-warn input{
+  width: 100%; box-sizing: border-box; border: 1px solid var(--line, #e4e5cf);
+  border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: inherit;
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+
+.mitra-manual-tag{
+  font-size: 9px; color: var(--warn, #c0392b); font-style: italic; margin-left: 4px;
+}
+
+/* ============================================================
+   PWA — warna status bar (area jam/baterai) disambungkan navy
+   ============================================================
+   Sebelumnya area itu kepotong warna lain (putih/krem bawaan)
+   karena app belum kasih tahu sistem warna apa yang harus dipakai
+   di situ. Perbaikannya TIDAK bergantung tebakan padding topbar
+   yang sudah ada (bisa beda-beda, tidak mau asal timpa) — dibuat
+   independen, satu lapisan navy nutup PERSIS wilayah aman itu,
+   ditambah meta tag di index.html biar sistemnya sendiri juga
+   diberi tahu (utamanya buat Android, status bar-nya ikut warna
+   theme-color tanpa perlu trik CSS ini).
+   ============================================================ */
+body::before{
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #0f1499;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* topbar didorong turun PERSIS sebesar wilayah aman itu. Sengaja
+   pakai margin-top, BUKAN menimpa padding-top yang sudah ada (aku
+   tidak tahu pasti nilai padding aslinya sekarang, jadi margin ini
+   NAMBAH jarak, tidak menggantikan spacing internal topbar yang
+   sudah ada, lebih aman) */
+.topbar{
+  margin-top: env(safe-area-inset-top, 0px);
+}

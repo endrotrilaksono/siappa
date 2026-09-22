@@ -6,6 +6,7 @@ const MODULES = [
   { path: '/harga', label: 'Daftar Harga', desc: 'Harga terbaru tiap varian', icon: '💰' },
   { path: '/hpp', label: 'HPP', desc: 'Kalkulator batch & harga jual', icon: '🧮' },
   { path: '/channel', label: 'Channel Penjualan', desc: 'Untung lintas channel, multi produk', icon: '🔀' },
+  { path: '/mitra', label: 'Mitra Titip', desc: 'Stok & tagihan MTF/MTB', icon: '🤝' },
   { path: '/komponen', label: 'Komponen HPP', desc: 'Master kemasan & harga', icon: '📦' },
 ]
 

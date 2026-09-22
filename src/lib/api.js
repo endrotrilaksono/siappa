@@ -242,3 +242,41 @@ export async function deleteHppComponent(id) {
   if (error) throw error
   return true
 }
+
+// ============================================================
+// MITRA TITIP (MTF/MTB): daftar mitra + riwayat stok
+// ============================================================
+
+export async function getMitra() {
+  const { data, error } = await supabase.from('mitra').select('*').order('nama')
+  if (error) throw error
+  return data
+}
+
+export async function createMitra(payload) {
+  const { data, error } = await supabase.from('mitra').insert(payload).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteMitra(id) {
+  const { error } = await supabase.from('mitra').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
+
+export async function getMitraRiwayat(mitraId) {
+  const { data, error } = await supabase
+    .from('mitra_riwayat')
+    .select('*')
+    .eq('mitra_id', mitraId)
+    .order('tanggal', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function createMitraRiwayat(payload) {
+  const { data, error } = await supabase.from('mitra_riwayat').insert(payload).select().single()
+  if (error) throw error
+  return data
+}

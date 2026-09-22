@@ -5,11 +5,12 @@ import HppModule from './modules/HppModule'
 import KomponenHppModule from './modules/KomponenHppModule'
 import DaftarHargaModule from './modules/DaftarHargaModule'
 import ChannelPenjualanModule from './modules/ChannelPenjualanModule'
+import MitraTitipModule from './modules/MitraTitipModule'
 import AuthGate from './components/AuthGate'
 import { hasCredentials } from './lib/supabase'
 import { UnsavedChangesProvider } from './lib/unsavedChanges'
 
-const TITLES = { '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP', '/harga': 'Daftar Harga', '/channel': 'Channel Penjualan' }
+const TITLES = { '/hpp': 'HPP Kalkulator', '/komponen': 'Komponen HPP', '/harga': 'Daftar Harga', '/channel': 'Channel Penjualan', '/mitra': 'Mitra Titip' }
 
 function Shell({ signOut }) {
   const [sbOpen, setSbOpen] = useState(false)
@@ -47,6 +48,7 @@ function Shell({ signOut }) {
           <Route path="/komponen" element={<div className="body"><KomponenHppModule /></div>} />
           <Route path="/harga" element={<div className="body"><DaftarHargaModule /></div>} />
           <Route path="/channel" element={<div className="body"><ChannelPenjualanModule /></div>} />
+          <Route path="/mitra" element={<div className="body"><MitraTitipModule /></div>} />
           {/* tab Konten sengaja dilepas dari navigasi. Datanya TETAP AMAN
               di Supabase (tabel contents/content_parts tidak disentuh),
               cuma pintu masuknya di app yang dicabut. Gampang dipasang
