@@ -88,3 +88,24 @@ lingkaran internal, pasang Supabase Auth (email + password).
 MVP pakai anon key + RLS "izinkan semua" — cocok untuk pemakaian internal.
 Sebelum dibuka lebih luas, ganti dengan Supabase Auth + policy per-user.
 Gunakan project Supabase BARU khusus Siappa, terpisah dari app lain.
+
+
+### Simpan dan Export Excel — Channel Penjualan (2026-10-07)
+
+Lengkapi semua baris, lalu gunakan Simpan atau Export Excel. Nama perhitungan
+opsional. Perhitungan Tersimpan bisa dibuka dan diexport dari perangkat lain
+setelah login. Harga, nama varian, kuantitas, dan hasil disalin saat disimpan;
+perubahan atau penghapusan varian HPP tidak mengubah simpanan lama.
+
+Simpanan kedaluwarsa 90 hari sejak waktu server saat dibuat. RLS menyembunyikan
+simpanan yang kedaluwarsa, dan job Supabase Cron menghapusnya setiap menit,
+termasuk ketika aplikasi tidak dibuka. File Excel yang sudah diunduh tidak
+terpengaruh. Pembersihan hanya menyentuh channel_penjualan_simpanan.
+
+Untuk pemasangan baru, jalankan supabase-channel-simpanan-20261007.sql di
+proyek Supabase Siappa sebelum deploy kode. Script ini memasang pg_cron,
+tabel terpisah, validasi input, RLS wajib login, dan jadwal pembersihan.
+Dokumentasi Cron: https://supabase.com/docs/guides/cron/quickstart
+
+Verifikasi hitungan, snapshot, export .xlsx, dan batas expiry:
+`node --test tests/channelPenjualan-20261007.test.js`.

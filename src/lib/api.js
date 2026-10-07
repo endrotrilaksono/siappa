@@ -280,3 +280,24 @@ export async function createMitraRiwayat(payload) {
   if (error) throw error
   return data
 }
+
+// Simpanan Channel Penjualan: snapshot terpisah dari data harga/HPP.
+export async function getChannelSimpanan() {
+  const rows = []
+  for (let offset = 0; ; offset += 100) {
+    const { data, error } = await supabase.from('channel_penjualan_simpanan')
+      .select('*').order('created_at', { ascending: false }).order('id')
+      .range(offset, offset + 99)
+    if (error) throw error
+    rows.push(...data)
+    if (data.length < 100) return rows
+  }
+}
+
+export async function createChannelSimpanan(snapshot) {
+  const { data, error } = await supabase.from('channel_penjualan_simpanan')
+    .insert({ nama: snapshot.nama, asal: snapshot.asal, tujuan: snapshot.tujuan, items: snapshot.items })
+    .select().single()
+  if (error) throw error
+  return data
+}
